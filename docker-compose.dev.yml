@@ -1,0 +1,14 @@
+# Sobrescreve para desenvolvimento: frontend roda com Vite (HMR) em vez de Nginx
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3001:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    command: npm run dev -- --host
