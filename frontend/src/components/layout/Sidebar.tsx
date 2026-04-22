@@ -31,6 +31,8 @@ const menuItems: MenuItem[] = [
       { label: 'Serviços', path: '/fiscal/servicos' },
       { label: 'CFOPs', path: '/fiscal/cfops' },
       { label: 'Natureza de Operação', path: '/fiscal/natureza-operacao' },
+      { label: 'Importar NF-e', path: '/fiscal/importar-nfe' },
+      { label: 'Mapeamento CFOP', path: '/fiscal/mapeamento-cfop' },
     ],
   },
   {

@@ -42,6 +42,7 @@ class PartnerUpdate(BaseModel):
 
 class PartnerResponse(BaseModel):
     id: int
+    code: int
     company_id: int
     tenant_id: int
     partner_type: PartnerType

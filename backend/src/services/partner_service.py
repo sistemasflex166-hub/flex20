@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
@@ -6,8 +6,17 @@ from src.models.partner import Partner
 from src.schemas.partner import PartnerCreate, PartnerUpdate
 
 
+async def _next_code(company_id: int, db: AsyncSession) -> int:
+    result = await db.execute(
+        select(func.max(Partner.code)).where(Partner.company_id == company_id)
+    )
+    current = result.scalar()
+    return (current or 0) + 1
+
+
 async def create_partner(company_id: int, tenant_id: int, data: PartnerCreate, db: AsyncSession) -> Partner:
-    partner = Partner(company_id=company_id, tenant_id=tenant_id, **data.model_dump())
+    code = await _next_code(company_id, db)
+    partner = Partner(code=code, company_id=company_id, tenant_id=tenant_id, **data.model_dump())
     db.add(partner)
     await db.commit()
     await db.refresh(partner)

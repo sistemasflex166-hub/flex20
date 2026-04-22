@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.routes import auth, users, tenants, companies, partners, account_plans, fiscal_entries, fiscal_base
+from src.routes import auth, users, tenants, companies, partners, account_plans, fiscal_entries, fiscal_base, nfe_import
 from src.core.config import settings
 
 app = FastAPI(
@@ -27,6 +27,7 @@ app.include_router(partners.router, prefix="/api/partners", tags=["partners"])
 app.include_router(account_plans.router, prefix="/api/account-plans", tags=["account-plans"])
 app.include_router(fiscal_entries.router, prefix="/api/fiscal-entries", tags=["fiscal-entries"])
 app.include_router(fiscal_base.router, prefix="/api/fiscal-base", tags=["fiscal-base"])
+app.include_router(nfe_import.router, prefix="/api/nfe", tags=["nfe-import"])
 
 
 @app.get("/api/health")

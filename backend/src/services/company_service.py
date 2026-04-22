@@ -1,9 +1,17 @@
+import re
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from src.models.company import Company
 from src.schemas.company import CompanyCreate, CompanyUpdate
+
+
+def _clean_doc(value: str | None) -> str | None:
+    """Remove qualquer caractere não-numérico de CNPJ/CPF."""
+    if not value:
+        return value
+    return re.sub(r"\D", "", value) or value
 
 
 async def _next_code(tenant_id: int, db: AsyncSession) -> int:
@@ -17,7 +25,10 @@ async def _next_code(tenant_id: int, db: AsyncSession) -> int:
 
 async def create_company(tenant_id: int, data: CompanyCreate, db: AsyncSession) -> Company:
     code = await _next_code(tenant_id, db)
-    company = Company(tenant_id=tenant_id, code=code, **data.model_dump())
+    dump = data.model_dump()
+    dump["cnpj"] = _clean_doc(dump.get("cnpj"))
+    dump["cpf"] = _clean_doc(dump.get("cpf"))
+    company = Company(tenant_id=tenant_id, code=code, **dump)
     db.add(company)
     await db.commit()
     await db.refresh(company)
@@ -44,7 +55,12 @@ async def get_company(company_id: int, tenant_id: int, db: AsyncSession) -> Comp
 
 async def update_company(company_id: int, tenant_id: int, data: CompanyUpdate, db: AsyncSession) -> Company:
     company = await get_company(company_id, tenant_id, db)
-    for field, value in data.model_dump(exclude_none=True).items():
+    updates = data.model_dump(exclude_none=True)
+    if "cnpj" in updates:
+        updates["cnpj"] = _clean_doc(updates["cnpj"])
+    if "cpf" in updates:
+        updates["cpf"] = _clean_doc(updates["cpf"])
+    for field, value in updates.items():
         setattr(company, field, value)
     await db.commit()
     await db.refresh(company)

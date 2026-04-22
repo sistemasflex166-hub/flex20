@@ -1,14 +1,14 @@
-# Sobrescreve para desenvolvimento: frontend roda com Vite (HMR) em vez de Nginx
+# Modo desenvolvimento: frontend com Vite HMR
+# Uso: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 services:
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "3001:3000"
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/public:/app/public
     environment:
       - VITE_API_URL=http://localhost:8000
     command: npm run dev -- --host

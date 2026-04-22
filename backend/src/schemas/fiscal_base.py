@@ -37,6 +37,10 @@ class ServiceItemCreate(BaseModel):
     service_code: str | None = None
     cnae: str | None = None
     iss_rate: float | None = None
+    simples_anexo: str | None = None
+    pis_rate: float | None = None
+    cofins_rate: float | None = None
+    account_code: str | None = None
 
 
 class ServiceItemUpdate(BaseModel):
@@ -45,6 +49,10 @@ class ServiceItemUpdate(BaseModel):
     service_code: str | None = None
     cnae: str | None = None
     iss_rate: float | None = None
+    simples_anexo: str | None = None
+    pis_rate: float | None = None
+    cofins_rate: float | None = None
+    account_code: str | None = None
 
 
 class ServiceItemResponse(BaseModel):
@@ -55,6 +63,10 @@ class ServiceItemResponse(BaseModel):
     service_code: str | None
     cnae: str | None
     iss_rate: float | None
+    simples_anexo: str | None
+    pis_rate: float | None
+    cofins_rate: float | None
+    account_code: str | None
     is_active: bool
 
     model_config = {"from_attributes": True}
@@ -86,12 +98,20 @@ class OperationNatureCreate(BaseModel):
     code: str
     name: str
     cfop_id: int | None = None
+    simples_anexo: str | None = None
+    pis_rate: float | None = None
+    cofins_rate: float | None = None
+    account_code: str | None = None
 
 
 class OperationNatureUpdate(BaseModel):
     code: str | None = None
     name: str | None = None
     cfop_id: int | None = None
+    simples_anexo: str | None = None
+    pis_rate: float | None = None
+    cofins_rate: float | None = None
+    account_code: str | None = None
 
 
 class OperationNatureResponse(BaseModel):
@@ -100,6 +120,10 @@ class OperationNatureResponse(BaseModel):
     code: str
     name: str
     cfop_id: int | None
+    simples_anexo: str | None
+    pis_rate: float | None
+    cofins_rate: float | None
+    account_code: str | None
     is_active: bool
 
     model_config = {"from_attributes": True}

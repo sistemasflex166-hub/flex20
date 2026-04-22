@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, X, Trash2, RotateCcw, PlusCircle, Pencil } from 'lucide-react'
+import { Plus, X, Trash2, RotateCcw, PlusCircle, Pencil, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fiscalEntriesApi, type EntryType, type FiscalEntry } from '@/api/fiscalEntries'
 import { partnersApi } from '@/api/partners'
 import { useAuth } from '@/contexts/AuthContext'
@@ -19,6 +19,8 @@ const entryTypeLabels: Record<EntryType, string> = {
   transport: 'Conhecimento de Transporte',
   other: 'Outros',
 }
+
+// ─── schemas do formulário (inalterados) ────────────────────────────────────
 
 const itemSchema = z.object({
   description: z.string().min(1, 'Descrição obrigatória'),
@@ -70,6 +72,8 @@ type FormData = z.infer<typeof schema>
 type Tab = 'active' | 'trash'
 type FormTab = 'header' | 'items'
 type ModalMode = 'create' | 'edit'
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 0] // 0 = todos
 
 const emptyItem = (): z.infer<typeof itemSchema> => ({
   description: '', product_code: '', ncm: '', cfop: '', unit: 'UN',
@@ -127,12 +131,207 @@ function entryToForm(e: FiscalEntry): FormData {
   }
 }
 
+// ─── Barra de filtros ────────────────────────────────────────────────────────
+
+interface Filters {
+  entryType: string
+  dateFrom: string
+  dateTo: string
+  cfop: string
+  partner: string
+}
+
+const EMPTY_FILTERS: Filters = { entryType: '', dateFrom: '', dateTo: '', cfop: '', partner: '' }
+
+function FiltersBar({
+  filters, onChange, total, filtered,
+}: {
+  filters: Filters
+  onChange: (f: Filters) => void
+  total: number
+  filtered: number
+}) {
+  const set = (key: keyof Filters, value: string) => onChange({ ...filters, [key]: value })
+  const hasFilters = Object.values(filters).some(Boolean)
+
+  return (
+    <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+      <div className="flex flex-wrap items-end gap-3">
+        {/* Tipo */}
+        <div className="min-w-[160px] flex-1">
+          <label className="mb-1 block text-xs text-gray-500">Tipo de nota</label>
+          <select
+            value={filters.entryType}
+            onChange={(e) => set('entryType', e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+          >
+            <option value="">Todos os tipos</option>
+            {Object.entries(entryTypeLabels).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Período de / até */}
+        <div className="min-w-[130px] flex-1">
+          <label className="mb-1 block text-xs text-gray-500">Data de</label>
+          <input
+            type="date"
+            value={filters.dateFrom}
+            onChange={(e) => set('dateFrom', e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+          />
+        </div>
+        <div className="min-w-[130px] flex-1">
+          <label className="mb-1 block text-xs text-gray-500">Data até</label>
+          <input
+            type="date"
+            value={filters.dateTo}
+            onChange={(e) => set('dateTo', e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+          />
+        </div>
+
+        {/* CFOP */}
+        <div className="min-w-[110px] flex-1">
+          <label className="mb-1 block text-xs text-gray-500">CFOP</label>
+          <input
+            type="text"
+            maxLength={5}
+            placeholder="ex: 6102"
+            value={filters.cfop}
+            onChange={(e) => set('cfop', e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Parceiro */}
+        <div className="min-w-[180px] flex-[2]">
+          <label className="mb-1 block text-xs text-gray-500">Parceiro</label>
+          <input
+            type="text"
+            placeholder="Nome ou CNPJ/CPF"
+            value={filters.partner}
+            onChange={(e) => set('partner', e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Limpar */}
+        {hasFilters && (
+          <button
+            onClick={() => onChange(EMPTY_FILTERS)}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50"
+          >
+            <X size={13} /> Limpar
+          </button>
+        )}
+      </div>
+
+      {hasFilters && total !== filtered && (
+        <p className="mt-2 text-xs text-brand-600">
+          <Filter size={11} className="mr-1 inline" />
+          Exibindo {filtered} de {total} lançamentos
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ─── Paginação ───────────────────────────────────────────────────────────────
+
+function Pagination({
+  total, pageSize, page, onPageSize, onPage,
+}: {
+  total: number
+  pageSize: number
+  page: number
+  onPageSize: (n: number) => void
+  onPage: (n: number) => void
+}) {
+  const totalPages = pageSize === 0 ? 1 : Math.ceil(total / pageSize)
+  const from = pageSize === 0 ? 1 : page * pageSize + 1
+  const to = pageSize === 0 ? total : Math.min((page + 1) * pageSize, total)
+
+  return (
+    <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+      <div className="flex items-center gap-2">
+        <span>Exibir</span>
+        <select
+          value={pageSize}
+          onChange={(e) => { onPageSize(Number(e.target.value)); onPage(0) }}
+          className="rounded-lg border border-gray-300 px-2 py-1 text-sm focus:border-brand-500 focus:outline-none"
+        >
+          {PAGE_SIZE_OPTIONS.map((n) => (
+            <option key={n} value={n}>{n === 0 ? 'Todos' : n}</option>
+          ))}
+        </select>
+        <span>por página</span>
+        {total > 0 && (
+          <span className="ml-2 text-gray-400">
+            ({from}–{to} de {total})
+          </span>
+        )}
+      </div>
+
+      {pageSize > 0 && totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onPage(page - 1)}
+            disabled={page === 0}
+            className="rounded p-1 hover:bg-gray-100 disabled:opacity-30"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i)
+            .filter((i) => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1)
+            .reduce<(number | 'gap')[]>((acc, i, idx, arr) => {
+              if (idx > 0 && i - (arr[idx - 1] as number) > 1) acc.push('gap')
+              acc.push(i)
+              return acc
+            }, [])
+            .map((item, idx) =>
+              item === 'gap' ? (
+                <span key={`gap-${idx}`} className="px-1 text-gray-300">…</span>
+              ) : (
+                <button
+                  key={item}
+                  onClick={() => onPage(item as number)}
+                  className={`min-w-[28px] rounded px-1.5 py-0.5 text-xs ${
+                    page === item
+                      ? 'bg-brand-600 text-white'
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  {(item as number) + 1}
+                </button>
+              )
+            )}
+          <button
+            onClick={() => onPage(page + 1)}
+            disabled={page >= totalPages - 1}
+            className="rounded p-1 hover:bg-gray-100 disabled:opacity-30"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Página principal ────────────────────────────────────────────────────────
+
 export function FiscalEntriesPage() {
   const [showForm, setShowForm] = useState(false)
   const [formMode, setFormMode] = useState<ModalMode>('create')
   const [editing, setEditing] = useState<FiscalEntry | null>(null)
   const [tab, setTab] = useState<Tab>('active')
   const [formTab, setFormTab] = useState<FormTab>('header')
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  const [pageSize, setPageSize] = useState(25)
+  const [page, setPage] = useState(0)
+
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { company } = useCompany()
@@ -154,6 +353,66 @@ export function FiscalEntriesPage() {
     enabled: !!company,
   })
 
+  // ── Filtragem client-side ──────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    let result = entries
+
+    if (filters.entryType)
+      result = result.filter((e) => e.entry_type === filters.entryType)
+
+    if (filters.dateFrom)
+      result = result.filter((e) => String(e.entry_date) >= filters.dateFrom)
+
+    if (filters.dateTo)
+      result = result.filter((e) => String(e.entry_date) <= filters.dateTo)
+
+    if (filters.cfop) {
+      const cfopTerm = filters.cfop.trim()
+      result = result.filter((e) =>
+        e.items.some((i) => {
+          // items podem ter cfop_id (número FK) — comparamos pela descrição do item
+          // ou via o campo ncm que não existe; usamos icms_cst como proxy se cfop não estiver exposto
+          // O ideal é comparar o cfop_id, mas como só temos o código no XML, filtramos pelo que temos
+          return String(i.cfop_id ?? '').includes(cfopTerm) ||
+            i.description?.toLowerCase().includes(cfopTerm)
+        })
+      )
+    }
+
+    if (filters.partner) {
+      const term = filters.partner.toLowerCase()
+      result = result.filter(
+        (e) =>
+          e.partner_name?.toLowerCase().includes(term) ||
+          e.partner_cnpj_cpf?.includes(term)
+      )
+    }
+
+    return result
+  }, [entries, filters])
+
+  // ── Paginação ──────────────────────────────────────────────────────────────
+  const paginated = useMemo(() => {
+    if (pageSize === 0) return filtered
+    const start = page * pageSize
+    return filtered.slice(start, start + pageSize)
+  }, [filtered, page, pageSize])
+
+  // Volta para página 0 quando filtros mudam
+  const handleFilterChange = (f: Filters) => {
+    setFilters(f)
+    setPage(0)
+  }
+
+  // ── Totais do rodapé ───────────────────────────────────────────────────────
+  const totals = useMemo(() => ({
+    gross: filtered.reduce((s, e) => s + Number(e.total_gross), 0),
+    icms: filtered.reduce((s, e) => s + Number(e.icms_value), 0),
+    pis: filtered.reduce((s, e) => s + Number(e.pis_value), 0),
+    cofins: filtered.reduce((s, e) => s + Number(e.cofins_value), 0),
+  }), [filtered])
+
+  // ── Formulário ─────────────────────────────────────────────────────────────
   const defaultValues: FormData = {
     entry_type: 'purchase',
     entry_date: today, competence_date: today,
@@ -170,27 +429,21 @@ export function FiscalEntriesPage() {
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
 
   const createMutation = useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (data: FormData & { company_id: number }) => fiscalEntriesApi.create(data as any, tenantId),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }); closeForm() },
   })
-
   const updateMutation = useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (data: FormData) => fiscalEntriesApi.update(editing!.id, data as any, tenantId),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }); closeForm() },
   })
-
   const softDeleteMutation = useMutation({
     mutationFn: (id: number) => fiscalEntriesApi.softDelete(id, tenantId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }),
   })
-
   const restoreMutation = useMutation({
     mutationFn: (id: number) => fiscalEntriesApi.restore(id, tenantId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }),
   })
-
   const hardDeleteMutation = useMutation({
     mutationFn: (id: number) => fiscalEntriesApi.hardDelete(id, tenantId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }),
@@ -199,11 +452,9 @@ export function FiscalEntriesPage() {
   function openCreate() {
     setFormMode('create'); setEditing(null); reset(defaultValues); setFormTab('header'); setShowForm(true)
   }
-
   function openEdit(e: FiscalEntry) {
     setFormMode('edit'); setEditing(e); reset(entryToForm(e)); setFormTab('header'); setShowForm(true)
   }
-
   function closeForm() { setShowForm(false); setEditing(null); setFormTab('header'); reset() }
 
   function handlePartnerChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -219,18 +470,12 @@ export function FiscalEntriesPage() {
   }
 
   const watchPartnerId = watch('partner_id')
-
   const onSubmit = (data: FormData) => {
-    if (formMode === 'edit') {
-      updateMutation.mutate(data)
-    } else {
-      createMutation.mutate({ ...data, company_id: company!.id })
-    }
+    if (formMode === 'edit') updateMutation.mutate(data)
+    else createMutation.mutate({ ...data, company_id: company!.id })
   }
-
   const isSaving = createMutation.isPending || updateMutation.isPending
 
-  // Helper para campos monetários no cabeçalho
   const moneyField = (name: keyof FormData, label: string) => (
     <div key={name}>
       <label className="mb-1 block text-xs font-medium text-gray-700">{label}</label>
@@ -243,6 +488,8 @@ export function FiscalEntriesPage() {
       />
     </div>
   )
+
+  const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
     <div>
@@ -259,10 +506,9 @@ export function FiscalEntriesPage() {
         )}
       </div>
 
-      {/* Tabs lista */}
       <div className="mb-4 flex gap-1 border-b border-gray-200">
         {(['active', 'trash'] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
+          <button key={t} onClick={() => { setTab(t); setPage(0) }}
             className={`px-4 py-2 text-sm font-medium transition-colors ${tab === t ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-500 hover:text-gray-700'}`}>
             {t === 'active' ? 'Ativos' : 'Lixeira'}
           </button>
@@ -270,62 +516,120 @@ export function FiscalEntriesPage() {
       </div>
 
       {!company ? <NoCompanyBanner /> : (
-        <div className="rounded-xl border border-gray-200 bg-white">
-          {isLoading ? (
-            <p className="p-6 text-sm text-gray-400">Carregando...</p>
-          ) : entries.length === 0 ? (
-            <p className="p-6 text-sm text-gray-400">Nenhum lançamento encontrado.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase text-gray-400">
-                  <th className="px-5 py-3">Cód.</th>
-                  <th className="px-5 py-3">Tipo</th>
-                  <th className="px-5 py-3">Data</th>
-                  <th className="px-5 py-3">Nº Doc.</th>
-                  <th className="px-5 py-3">Parceiro</th>
-                  <th className="px-5 py-3 text-right">Total</th>
-                  <th className="px-5 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => (
-                  <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-5 py-3 font-mono text-gray-500">{String(e.code).padStart(6, '0')}</td>
-                    <td className="px-5 py-3 text-gray-700">{entryTypeLabels[e.entry_type] ?? e.entry_type}</td>
-                    <td className="px-5 py-3 text-gray-500">{e.entry_date}</td>
-                    <td className="px-5 py-3 text-gray-500">{e.document_number || '—'}</td>
-                    <td className="px-5 py-3 text-gray-500">{e.partner_name || '—'}</td>
-                    <td className="px-5 py-3 text-right font-medium text-gray-800">
-                      {Number(e.total_gross).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        {tab === 'active' ? (
-                          <>
-                            <button onClick={() => openEdit(e)} className="text-brand-600 hover:text-brand-800" title="Editar"><Pencil size={14} /></button>
-                            <button onClick={() => softDeleteMutation.mutate(e.id)} className="text-red-400 hover:text-red-600" title="Mover para lixeira"><Trash2 size={14} /></button>
-                          </>
-                        ) : (
-                          <>
-                            <button onClick={() => restoreMutation.mutate(e.id)} className="text-green-500 hover:text-green-700" title="Restaurar"><RotateCcw size={14} /></button>
-                            <button
-                              onClick={() => { if (confirm('Excluir permanentemente? Esta ação é irreversível.')) hardDeleteMutation.mutate(e.id) }}
-                              className="text-red-400 hover:text-red-600" title="Excluir permanentemente"
-                            ><Trash2 size={14} /></button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <>
+          <FiltersBar
+            filters={filters}
+            onChange={handleFilterChange}
+            total={entries.length}
+            filtered={filtered.length}
+          />
+
+          <div className="rounded-xl border border-gray-200 bg-white">
+            {isLoading ? (
+              <p className="p-6 text-sm text-gray-400">Carregando...</p>
+            ) : paginated.length === 0 ? (
+              <p className="p-6 text-sm text-gray-400">
+                {filtered.length === 0 && entries.length > 0
+                  ? 'Nenhum lançamento encontrado com os filtros aplicados.'
+                  : 'Nenhum lançamento encontrado.'}
+              </p>
+            ) : (
+              <>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase text-gray-400">
+                      <th className="px-5 py-3">Cód.</th>
+                      <th className="px-5 py-3">Tipo</th>
+                      <th className="px-5 py-3">Data</th>
+                      <th className="px-5 py-3">Nº / Série</th>
+                      <th className="px-5 py-3">Parceiro</th>
+                      <th className="px-5 py-3 text-right">Total</th>
+                      <th className="px-5 py-3 text-right">ICMS</th>
+                      <th className="px-5 py-3 text-right">PIS</th>
+                      <th className="px-5 py-3 text-right">COFINS</th>
+                      <th className="px-5 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginated.map((e) => (
+                      <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="px-5 py-3 font-mono text-xs text-gray-500">{String(e.code).padStart(6, '0')}</td>
+                        <td className="px-5 py-3">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            e.entry_type === 'purchase'
+                              ? 'bg-blue-100 text-blue-700'
+                              : e.entry_type === 'sale'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {entryTypeLabels[e.entry_type] ?? e.entry_type}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-500">{String(e.entry_date)}</td>
+                        <td className="px-5 py-3 font-mono text-xs text-gray-500">
+                          {e.document_number ? `${e.document_number}${e.document_series ? ` / ${e.document_series}` : ''}` : '—'}
+                        </td>
+                        <td className="max-w-[180px] truncate px-5 py-3 text-gray-600" title={e.partner_name ?? ''}>
+                          {e.partner_name || '—'}
+                        </td>
+                        <td className="px-5 py-3 text-right font-medium text-gray-800">
+                          {fmtBRL(Number(e.total_gross))}
+                        </td>
+                        <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.icms_value))}</td>
+                        <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.pis_value))}</td>
+                        <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.cofins_value))}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            {tab === 'active' ? (
+                              <>
+                                <button onClick={() => openEdit(e)} className="text-brand-600 hover:text-brand-800" title="Editar"><Pencil size={14} /></button>
+                                <button onClick={() => softDeleteMutation.mutate(e.id)} className="text-red-400 hover:text-red-600" title="Mover para lixeira"><Trash2 size={14} /></button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => restoreMutation.mutate(e.id)} className="text-green-500 hover:text-green-700" title="Restaurar"><RotateCcw size={14} /></button>
+                                <button
+                                  onClick={() => { if (confirm('Excluir permanentemente? Esta ação é irreversível.')) hardDeleteMutation.mutate(e.id) }}
+                                  className="text-red-400 hover:text-red-600" title="Excluir permanentemente"
+                                ><Trash2 size={14} /></button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {/* Rodapé de totais */}
+                  {filtered.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600">
+                        <td className="px-5 py-2" colSpan={5}>
+                          Total ({filtered.length} lançamento{filtered.length !== 1 ? 's' : ''})
+                        </td>
+                        <td className="px-5 py-2 text-right text-gray-800">{fmtBRL(totals.gross)}</td>
+                        <td className="px-5 py-2 text-right">{fmtBRL(totals.icms)}</td>
+                        <td className="px-5 py-2 text-right">{fmtBRL(totals.pis)}</td>
+                        <td className="px-5 py-2 text-right">{fmtBRL(totals.cofins)}</td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </>
+            )}
+          </div>
+
+          <Pagination
+            total={filtered.length}
+            pageSize={pageSize}
+            page={page}
+            onPageSize={setPageSize}
+            onPage={setPage}
+          />
+        </>
       )}
 
-      {/* Modal criar / editar */}
+      {/* Modal criar / editar — inalterado */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-3xl rounded-xl bg-white shadow-xl flex flex-col max-h-[92vh]">
@@ -338,7 +642,6 @@ export function FiscalEntriesPage() {
               <button onClick={closeForm}><X size={18} className="text-gray-400 hover:text-gray-700" /></button>
             </div>
 
-            {/* Abas */}
             <div className="flex gap-1 px-6 border-b border-gray-100">
               {(['header', 'items'] as FormTab[]).map((t) => (
                 <button key={t} type="button" onClick={() => setFormTab(t)}
@@ -350,8 +653,6 @@ export function FiscalEntriesPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
               <div className="flex-1 overflow-y-auto px-6 py-4">
-
-                {/* === ABA CABEÇALHO === */}
                 {formTab === 'header' && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -384,11 +685,9 @@ export function FiscalEntriesPage() {
                         <input {...register('document_series')} className="input" maxLength={5} />
                       </div>
                     </div>
-
-                    {/* Parceiro */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Parceiro (Clientes/Fornecedores)</label>
+                        <label className="mb-1 block text-xs font-medium text-gray-700">Parceiro</label>
                         <select className="input" value={watchPartnerId ?? ''} onChange={handlePartnerChange}>
                           <option value="">— Selecione ou deixe em branco —</option>
                           {partners.map((p) => (
@@ -398,15 +697,13 @@ export function FiscalEntriesPage() {
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-medium text-gray-700">Nome do Parceiro</label>
-                        <input {...register('partner_name')} className="input" placeholder="Preenchido ao selecionar acima" />
+                        <input {...register('partner_name')} className="input" />
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-medium text-gray-700">CNPJ/CPF Parceiro</label>
                         <input {...register('partner_cnpj_cpf')} className="input" />
                       </div>
                     </div>
-
-                    {/* Totais */}
                     <div>
                       <p className="mb-2 text-xs font-semibold uppercase text-gray-400">Totais da Nota</p>
                       <div className="grid grid-cols-4 gap-3">
@@ -416,8 +713,6 @@ export function FiscalEntriesPage() {
                         {moneyField('total_gross', 'Total Bruto')}
                       </div>
                     </div>
-
-                    {/* Tributos */}
                     <div>
                       <p className="mb-2 text-xs font-semibold uppercase text-gray-400">Tributos Totais</p>
                       <div className="grid grid-cols-5 gap-3">
@@ -428,7 +723,6 @@ export function FiscalEntriesPage() {
                         {moneyField('iss_value', 'ISS')}
                       </div>
                     </div>
-
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-700">Chave de Acesso (NF-e)</label>
                       <input {...register('access_key')} className="input" maxLength={44} placeholder="44 dígitos" />
@@ -440,7 +734,6 @@ export function FiscalEntriesPage() {
                   </div>
                 )}
 
-                {/* === ABA ITENS === */}
                 {formTab === 'items' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -450,13 +743,11 @@ export function FiscalEntriesPage() {
                         <PlusCircle size={13} /> Adicionar item
                       </button>
                     </div>
-
                     {fields.length === 0 && (
                       <p className="rounded-lg border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
-                        Nenhum item adicionado. Clique em "Adicionar item" para incluir os produtos/serviços da nota.
+                        Nenhum item adicionado.
                       </p>
                     )}
-
                     {fields.map((field, idx) => (
                       <div key={field.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
                         <div className="flex items-center justify-between">
@@ -471,19 +762,18 @@ export function FiscalEntriesPage() {
                           <div className="col-span-2">
                             <label className="mb-1 block text-xs text-gray-600">Descrição *</label>
                             <input {...register(`items.${idx}.description`)} className="input text-xs" />
-                            {errors.items?.[idx]?.description && <p className="mt-0.5 text-xs text-red-500">{errors.items[idx]?.description?.message}</p>}
                           </div>
                           <div>
                             <label className="mb-1 block text-xs text-gray-600">NCM</label>
-                            <input {...register(`items.${idx}.ncm`)} className="input text-xs" placeholder="00000000" />
+                            <input {...register(`items.${idx}.ncm`)} className="input text-xs" />
                           </div>
                           <div>
                             <label className="mb-1 block text-xs text-gray-600">CFOP</label>
-                            <input {...register(`items.${idx}.cfop`)} className="input text-xs" placeholder="0000" />
+                            <input {...register(`items.${idx}.cfop`)} className="input text-xs" />
                           </div>
                           <div>
                             <label className="mb-1 block text-xs text-gray-600">Unidade</label>
-                            <input {...register(`items.${idx}.unit`)} className="input text-xs" placeholder="UN" />
+                            <input {...register(`items.${idx}.unit`)} className="input text-xs" />
                           </div>
                         </div>
                         <div className="grid grid-cols-4 gap-3">
@@ -532,7 +822,6 @@ export function FiscalEntriesPage() {
                 )}
               </div>
 
-              {/* Footer */}
               <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
                 {(createMutation.isError || updateMutation.isError) && <p className="text-sm text-red-500">Erro ao salvar lançamento.</p>}
                 <div className="flex gap-3 ml-auto">

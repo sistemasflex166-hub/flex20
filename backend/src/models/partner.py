@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, func
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Integer, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
@@ -21,6 +21,7 @@ class Partner(Base):
     __tablename__ = "partners"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[int] = mapped_column(Integer, nullable=False)
     company_id: Mapped[int] = mapped_column(ForeignKey("public.companies.id"), nullable=False)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("public.tenants.id"), nullable=False)
 
@@ -48,7 +49,10 @@ class Partner(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = ({"schema": "public"},)
+    __table_args__ = (
+        UniqueConstraint("company_id", "code", name="uq_partner_company_code"),
+        {"schema": "public"},
+    )
 
     company: Mapped["Company"] = relationship("Company")
     tenant: Mapped["Tenant"] = relationship("Tenant")

@@ -27,6 +27,10 @@ export interface ServiceItem {
   service_code: string | null
   cnae: string | null
   iss_rate: number | null
+  simples_anexo: string | null
+  pis_rate: number | null
+  cofins_rate: number | null
+  account_code: string | null
   is_active: boolean
 }
 
@@ -36,6 +40,10 @@ export interface ServiceItemCreate {
   service_code?: string
   cnae?: string
   iss_rate?: number
+  simples_anexo?: string
+  pis_rate?: number
+  cofins_rate?: number
+  account_code?: string
 }
 
 export interface CFOP {
@@ -58,6 +66,10 @@ export interface OperationNature {
   code: string
   name: string
   cfop_id: number | null
+  simples_anexo: string | null
+  pis_rate: number | null
+  cofins_rate: number | null
+  account_code: string | null
   is_active: boolean
 }
 
@@ -65,6 +77,10 @@ export interface OperationNatureCreate {
   code: string
   name: string
   cfop_id?: number
+  simples_anexo?: string
+  pis_rate?: number
+  cofins_rate?: number
+  account_code?: string
 }
 
 export type ProductUpdate = Partial<ProductCreate>

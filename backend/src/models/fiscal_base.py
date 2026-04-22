@@ -53,6 +53,10 @@ class ServiceItem(Base):
     service_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     cnae: Mapped[str | None] = mapped_column(String(10), nullable=True)
     iss_rate: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    simples_anexo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pis_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    cofins_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    account_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -92,6 +96,10 @@ class OperationNature(Base):
 
     code: Mapped[str] = mapped_column(String(30), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    simples_anexo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pis_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    cofins_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    account_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

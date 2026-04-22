@@ -8,16 +8,52 @@ import { serviceItemsApi, type ServiceItem, type ServiceItemCreate } from '@/api
 import { useCompany } from '@/contexts/CompanyContext'
 import { NoCompanyBanner } from '@/components/fiscal/NoCompanyBanner'
 
+const SIMPLES_OPTIONS = [
+  { value: '', label: 'Não se aplica' },
+  { value: 'anexo_i', label: 'Simples Nacional: Anexo I' },
+  { value: 'anexo_ii', label: 'Simples Nacional: Anexo II' },
+  { value: 'anexo_iii', label: 'Simples Nacional: Anexo III' },
+  { value: 'anexo_iv', label: 'Simples Nacional: Anexo IV' },
+  { value: 'anexo_v', label: 'Simples Nacional: Anexo V' },
+]
+
 const schema = z.object({
   code: z.string().min(1, 'Código obrigatório'),
   name: z.string().min(1, 'Descrição obrigatória'),
   service_code: z.string().optional(),
   cnae: z.string().optional(),
   iss_rate: z.number().min(0).max(100).optional(),
+  simples_anexo: z.string().optional(),
+  pis_rate: z.number().min(0).max(100).optional(),
+  cofins_rate: z.number().min(0).max(100).optional(),
+  account_code: z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
 type ModalMode = 'create' | 'edit'
+
+function RateInput({ label, name, control }: { label: string; name: 'iss_rate' | 'pis_rate' | 'cofins_rate'; control: any }) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-gray-700">{label} (%)</label>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field }) => (
+          <input
+            type="number"
+            step="0.0001"
+            min="0"
+            max="100"
+            className="input"
+            value={field.value ?? ''}
+            onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          />
+        )}
+      />
+    </div>
+  )
+}
 
 export function ServicesPage() {
   const { company } = useCompany()
@@ -57,16 +93,32 @@ export function ServicesPage() {
 
   function openEdit(s: ServiceItem) {
     setMode('edit'); setEditing(s)
-    reset({ code: s.code, name: s.name, service_code: s.service_code ?? '', cnae: s.cnae ?? '', iss_rate: s.iss_rate ?? 0 })
+    reset({
+      code: s.code,
+      name: s.name,
+      service_code: s.service_code ?? '',
+      cnae: s.cnae ?? '',
+      iss_rate: s.iss_rate ?? undefined,
+      simples_anexo: s.simples_anexo ?? '',
+      pis_rate: s.pis_rate ?? undefined,
+      cofins_rate: s.cofins_rate ?? undefined,
+      account_code: s.account_code ?? '',
+    })
     setShowForm(true)
   }
 
   function closeForm() { setShowForm(false); setEditing(null); reset() }
 
-  const onSubmit = (data: FormData) =>
-    mode === 'edit' ? updateMutation.mutate(data) : createMutation.mutate(data as ServiceItemCreate)
+  const onSubmit = (data: FormData) => {
+    const payload = { ...data, simples_anexo: data.simples_anexo || undefined }
+    return mode === 'edit' ? updateMutation.mutate(payload as FormData) : createMutation.mutate(payload as ServiceItemCreate)
+  }
 
   const isSaving = createMutation.isPending || updateMutation.isPending
+
+  function simplexLabel(val: string | null) {
+    return SIMPLES_OPTIONS.find((o) => o.value === val)?.label ?? '—'
+  }
 
   return (
     <div>
@@ -96,6 +148,10 @@ export function ServicesPage() {
                   <th className="px-5 py-3">Cód. Serviço</th>
                   <th className="px-5 py-3">CNAE</th>
                   <th className="px-5 py-3 text-right">ISS %</th>
+                  <th className="px-5 py-3">Simples Nacional</th>
+                  <th className="px-5 py-3 text-right">PIS %</th>
+                  <th className="px-5 py-3 text-right">COFINS %</th>
+                  <th className="px-5 py-3">Conta Contábil</th>
                   <th className="px-5 py-3"></th>
                 </tr>
               </thead>
@@ -107,6 +163,10 @@ export function ServicesPage() {
                     <td className="px-5 py-3 text-gray-500">{s.service_code || '—'}</td>
                     <td className="px-5 py-3 text-gray-500">{s.cnae || '—'}</td>
                     <td className="px-5 py-3 text-right text-gray-500">{s.iss_rate != null ? `${s.iss_rate}%` : '—'}</td>
+                    <td className="px-5 py-3 text-xs text-gray-500">{simplexLabel(s.simples_anexo)}</td>
+                    <td className="px-5 py-3 text-right text-gray-500">{s.pis_rate != null ? `${s.pis_rate}%` : '—'}</td>
+                    <td className="px-5 py-3 text-right text-gray-500">{s.cofins_rate != null ? `${s.cofins_rate}%` : '—'}</td>
+                    <td className="px-5 py-3 font-mono text-xs text-gray-500">{s.account_code || '—'}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <button onClick={() => openEdit(s)} className="text-brand-600 hover:text-brand-800" title="Editar"><Pencil size={14} /></button>
@@ -123,9 +183,11 @@ export function ServicesPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">{mode === 'edit' ? 'Editar Serviço' : 'Novo Serviço'}</h2>
+              <h2 className="text-base font-semibold text-gray-900">
+                {mode === 'edit' ? 'Editar Serviço' : 'Novo Serviço'}
+              </h2>
               <button onClick={closeForm}><X size={18} className="text-gray-400 hover:text-gray-700" /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -135,24 +197,7 @@ export function ServicesPage() {
                   <input {...register('code')} className="input" />
                   {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code.message}</p>}
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">ISS (%)</label>
-                  <Controller
-                    control={control}
-                    name="iss_rate"
-                    render={({ field }) => (
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        className="input"
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                      />
-                    )}
-                  />
-                </div>
+                <RateInput label="ISS" name="iss_rate" control={control} />
                 <div className="col-span-2">
                   <label className="mb-1 block text-xs font-medium text-gray-700">Descrição *</label>
                   <input {...register('name')} className="input" />
@@ -166,8 +211,22 @@ export function ServicesPage() {
                   <label className="mb-1 block text-xs font-medium text-gray-700">CNAE</label>
                   <input {...register('cnae')} className="input" />
                 </div>
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Simples Nacional</label>
+                  <select {...register('simples_anexo')} className="input">
+                    {SIMPLES_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <RateInput label="Alíquota PIS" name="pis_rate" control={control} />
+                <RateInput label="Alíquota COFINS" name="cofins_rate" control={control} />
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Conta Contábil</label>
+                  <input {...register('account_code')} placeholder="ex: 3.1.1.01" className="input" />
+                </div>
               </div>
-              {(createMutation.isError || updateMutation.isError) && <p className="text-sm text-red-500">Erro ao salvar.</p>}
+              {(createMutation.isError || updateMutation.isError) && (
+                <p className="text-sm text-red-500">Erro ao salvar.</p>
+              )}
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={closeForm} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
                 <button type="submit" disabled={isSaving} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60">

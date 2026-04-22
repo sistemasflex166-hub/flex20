@@ -13,6 +13,8 @@ import { ProductsPage } from '@/pages/fiscal/ProductsPage'
 import { ServicesPage } from '@/pages/fiscal/ServicesPage'
 import { CFOPsPage } from '@/pages/fiscal/CFOPsPage'
 import { OperationNaturesPage } from '@/pages/fiscal/OperationNaturesPage'
+import { NfeImportPage } from '@/pages/fiscal/NfeImportPage'
+import { CfopMappingPage } from '@/pages/fiscal/CfopMappingPage'
 
 const queryClient = new QueryClient()
 
@@ -34,6 +36,8 @@ export default function App() {
                 <Route path="/fiscal/servicos" element={<ServicesPage />} />
                 <Route path="/fiscal/cfops" element={<CFOPsPage />} />
                 <Route path="/fiscal/natureza-operacao" element={<OperationNaturesPage />} />
+                <Route path="/fiscal/importar-nfe" element={<NfeImportPage />} />
+                <Route path="/fiscal/mapeamento-cfop" element={<CfopMappingPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
