@@ -70,6 +70,7 @@ export interface OperationNature {
   pis_rate: number | null
   cofins_rate: number | null
   account_code: string | null
+  is_billing: boolean
   is_active: boolean
 }
 
@@ -81,6 +82,7 @@ export interface OperationNatureCreate {
   pis_rate?: number
   cofins_rate?: number
   account_code?: string
+  is_billing?: boolean
 }
 
 export type ProductUpdate = Partial<ProductCreate>

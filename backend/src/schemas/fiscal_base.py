@@ -102,6 +102,7 @@ class OperationNatureCreate(BaseModel):
     pis_rate: float | None = None
     cofins_rate: float | None = None
     account_code: str | None = None
+    is_billing: bool = False
 
 
 class OperationNatureUpdate(BaseModel):
@@ -112,6 +113,7 @@ class OperationNatureUpdate(BaseModel):
     pis_rate: float | None = None
     cofins_rate: float | None = None
     account_code: str | None = None
+    is_billing: bool | None = None
 
 
 class OperationNatureResponse(BaseModel):
@@ -124,6 +126,7 @@ class OperationNatureResponse(BaseModel):
     pis_rate: float | None
     cofins_rate: float | None
     account_code: str | None
+    is_billing: bool
     is_active: bool
 
     model_config = {"from_attributes": True}

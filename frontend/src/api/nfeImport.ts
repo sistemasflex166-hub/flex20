@@ -126,3 +126,42 @@ export async function deleteCfopMapping(id: number, tenantId?: number): Promise<
   const params = tenantId ? { tenant_id: tenantId } : {}
   await api.delete(`/nfe/cfop-mappings/${id}`, { params })
 }
+
+// ── NFS-e ────────────────────────────────────────────────────────────────────
+
+export interface NfseImportResult {
+  id: number
+  code: number
+  entry_type: string
+  document_number: string
+  document_series: string
+  partner_name: string
+  total_gross: number
+}
+
+export async function previewNfse(file: File, tenantId?: number): Promise<any> {
+  const form = new FormData()
+  form.append('file', file)
+  const params = tenantId ? { tenant_id: tenantId } : {}
+  const { data } = await api.post('/nfe/nfse/preview', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    params,
+  })
+  return data
+}
+
+export async function importNfse(
+  file: File,
+  onDuplicate: 'skip' | 'overwrite',
+  tenantId?: number
+): Promise<NfseImportResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const params: Record<string, any> = { on_duplicate: onDuplicate }
+  if (tenantId) params.tenant_id = tenantId
+  const { data } = await api.post('/nfe/nfse/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    params,
+  })
+  return data
+}

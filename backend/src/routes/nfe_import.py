@@ -7,7 +7,7 @@ from src.core.deps import require_office_user
 from src.models.user import User, UserRole
 from src.models.cfop_mapping import CfopMapping
 from src.schemas.cfop_mapping import CfopMappingCreate, CfopMappingUpdate, CfopMappingResponse
-from src.services import nfe_import_service
+from src.services import nfe_import_service, nfse_import_service
 
 router = APIRouter()
 
@@ -78,6 +78,62 @@ async def import_nfe(
         "partner_name": entry.partner_name,
         "total_gross": float(entry.total_gross),
         "items_count": len(entry.items),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Importação NFS-e
+# ---------------------------------------------------------------------------
+
+@router.post("/nfse/preview")
+async def preview_nfse(
+    file: UploadFile = File(...),
+    tenant_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_office_user),
+):
+    content = await file.read()
+    if len(content) > MAX_XML_SIZE:
+        raise HTTPException(status_code=413, detail="Arquivo muito grande (máximo 5 MB)")
+    try:
+        return await nfse_import_service.preview_nfse_xml(
+            content, _resolve_tenant(current_user, tenant_id), db
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/nfse/import")
+async def import_nfse(
+    file: UploadFile = File(...),
+    on_duplicate: str = Query("skip", description="skip | overwrite"),
+    tenant_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_office_user),
+):
+    if on_duplicate not in ("skip", "overwrite"):
+        raise HTTPException(status_code=400, detail="on_duplicate deve ser 'skip' ou 'overwrite'")
+    content = await file.read()
+    if len(content) > MAX_XML_SIZE:
+        raise HTTPException(status_code=413, detail="Arquivo muito grande (máximo 5 MB)")
+    try:
+        entry = await nfse_import_service.import_nfse_xml(
+            content,
+            _resolve_tenant(current_user, tenant_id),
+            on_duplicate,  # type: ignore[arg-type]
+            db,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "id": entry.id,
+        "code": entry.code,
+        "entry_type": entry.entry_type,
+        "document_number": entry.document_number,
+        "document_series": entry.document_series,
+        "partner_name": entry.partner_name,
+        "total_gross": float(entry.total_gross),
     }
 
 

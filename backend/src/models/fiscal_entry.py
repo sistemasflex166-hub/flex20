@@ -57,7 +57,7 @@ class FiscalEntry(Base):
     cbs_value: Mapped[float] = mapped_column(Numeric(15, 2), nullable=False, default=0)
 
     # Observações e chave de acesso (NF-e)
-    access_key: Mapped[str | None] = mapped_column(String(44), nullable=True)
+    access_key: Mapped[str | None] = mapped_column(String(60), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Soft delete

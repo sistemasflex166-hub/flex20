@@ -26,6 +26,7 @@ const schema = z.object({
   pis_rate: z.number().min(0).max(100).optional(),
   cofins_rate: z.number().min(0).max(100).optional(),
   account_code: z.string().optional(),
+  is_billing: z.boolean().default(false),
 })
 
 type FormData = z.infer<typeof schema>
@@ -107,6 +108,7 @@ export function OperationNaturesPage() {
       pis_rate: n.pis_rate ?? undefined,
       cofins_rate: n.cofins_rate ?? undefined,
       account_code: n.account_code ?? '',
+      is_billing: n.is_billing ?? false,
     })
     setShowForm(true)
   }
@@ -154,6 +156,7 @@ export function OperationNaturesPage() {
                   <th className="px-5 py-3 text-right">PIS %</th>
                   <th className="px-5 py-3 text-right">COFINS %</th>
                   <th className="px-5 py-3">Conta Contábil</th>
+                  <th className="px-5 py-3 text-center">Faturamento</th>
                   <th className="px-5 py-3"></th>
                 </tr>
               </thead>
@@ -169,6 +172,11 @@ export function OperationNaturesPage() {
                     <td className="px-5 py-3 text-right text-gray-500">{n.pis_rate != null ? `${n.pis_rate}%` : '—'}</td>
                     <td className="px-5 py-3 text-right text-gray-500">{n.cofins_rate != null ? `${n.cofins_rate}%` : '—'}</td>
                     <td className="px-5 py-3 font-mono text-xs text-gray-500">{n.account_code || '—'}</td>
+                    <td className="px-5 py-3 text-center">
+                      {n.is_billing
+                        ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">Sim</span>
+                        : <span className="text-gray-300 text-xs">—</span>}
+                    </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <button onClick={() => openEdit(n)} className="text-brand-600 hover:text-brand-800" title="Editar"><Pencil size={14} /></button>
@@ -222,6 +230,17 @@ export function OperationNaturesPage() {
                 <div className="col-span-2">
                   <label className="mb-1 block text-xs font-medium text-gray-700">Conta Contábil</label>
                   <input {...register('account_code')} placeholder="ex: 1.1.1.01" className="input" />
+                </div>
+                <div className="col-span-2">
+                  <label className="flex cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      {...register('is_billing')}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Faturamento</span>
+                    <span className="text-xs text-gray-400">(considera este lançamento no relatório de faturamento)</span>
+                  </label>
                 </div>
               </div>
               {(createMutation.isError || updateMutation.isError) && (
