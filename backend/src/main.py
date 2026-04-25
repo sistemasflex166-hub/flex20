@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.routes import auth, users, tenants, companies, partners, account_plans, fiscal_entries, fiscal_base, nfe_import
+from src.routes.contabilidade import plano_contas as cont_plano_contas, lancamentos as cont_lancamentos, conta_bancaria as cont_conta_bancaria, saldo_inicial as cont_saldo_inicial, relatorios as cont_relatorios
+from src.routes.folha import cadastros as folha_cadastros
 from src.core.config import settings
 
 app = FastAPI(
@@ -28,6 +30,12 @@ app.include_router(account_plans.router, prefix="/api/account-plans", tags=["acc
 app.include_router(fiscal_entries.router, prefix="/api/fiscal-entries", tags=["fiscal-entries"])
 app.include_router(fiscal_base.router, prefix="/api/fiscal-base", tags=["fiscal-base"])
 app.include_router(nfe_import.router, prefix="/api/nfe", tags=["nfe-import"])
+app.include_router(cont_plano_contas.router, prefix="/api/contabilidade/plano-contas", tags=["contabilidade-plano-contas"])
+app.include_router(cont_lancamentos.router, prefix="/api/contabilidade/lancamentos", tags=["contabilidade-lancamentos"])
+app.include_router(cont_conta_bancaria.router, prefix="/api/contabilidade/contas-bancarias", tags=["contabilidade-contas-bancarias"])
+app.include_router(cont_saldo_inicial.router, prefix="/api/contabilidade/saldos-iniciais", tags=["contabilidade-saldos-iniciais"])
+app.include_router(cont_relatorios.router, prefix="/api/contabilidade/relatorios", tags=["contabilidade-relatorios"])
+app.include_router(folha_cadastros.router, prefix="/api/folha", tags=["folha-cadastros"])
 
 
 @app.get("/api/health")

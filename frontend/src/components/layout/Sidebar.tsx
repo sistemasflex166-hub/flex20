@@ -40,7 +40,13 @@ const menuItems: MenuItem[] = [
     icon: <BookOpen size={18} />,
     children: [
       { label: 'Plano de Contas', path: '/contabilidade/plano-contas' },
+      { label: 'Centro de Custos', path: '/contabilidade/centros-custo' },
+      { label: 'Histórico Padrão', path: '/contabilidade/historicos-padrao' },
+      { label: 'Contas Bancárias', path: '/contabilidade/contas-bancarias' },
+      { label: 'Saldos Iniciais', path: '/contabilidade/saldos-iniciais' },
       { label: 'Lançamentos', path: '/contabilidade/lancamentos' },
+      { label: 'Balancete', path: '/contabilidade/balancete' },
+      { label: 'Razão Contábil', path: '/contabilidade/razao' },
     ],
   },
   {
@@ -48,6 +54,10 @@ const menuItems: MenuItem[] = [
     icon: <Users size={18} />,
     children: [
       { label: 'Funcionários', path: '/folha/funcionarios' },
+      { label: 'Cargos', path: '/folha/cargos' },
+      { label: 'Departamentos', path: '/folha/departamentos' },
+      { label: 'Sindicatos', path: '/folha/sindicatos' },
+      { label: 'Eventos da Folha', path: '/folha/eventos' },
     ],
   },
   {

@@ -33,3 +33,5 @@ redis_data/
 .DS_Store
 Thumbs.db
 backup_*.sql
+backup_*.dump
+*.dump
