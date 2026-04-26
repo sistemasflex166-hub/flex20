@@ -23,6 +23,8 @@ import { ContaBancariaPage } from '@/pages/contabilidade/ContaBancariaPage'
 import { SaldoInicialPage } from '@/pages/contabilidade/SaldoInicialPage'
 import { BalancetePage } from '@/pages/contabilidade/BalancetePage'
 import { RazaoPage } from '@/pages/contabilidade/RazaoPage'
+import { SimplesConfiguracaoPage } from '@/pages/fiscal/simples/SimplesConfiguracaoPage'
+import { SimplesApuracaoPage } from '@/pages/fiscal/simples/SimplesApuracaoPage'
 import { FuncionariosPage } from '@/pages/folha/FuncionariosPage'
 import { CargosPage } from '@/pages/folha/CargosPage'
 import { DepartamentosPage } from '@/pages/folha/DepartamentosPage'
@@ -51,6 +53,8 @@ export default function App() {
                 <Route path="/fiscal/natureza-operacao" element={<OperationNaturesPage />} />
                 <Route path="/fiscal/importar-nfe" element={<NfeImportPage />} />
                 <Route path="/fiscal/mapeamento-cfop" element={<CfopMappingPage />} />
+                <Route path="/fiscal/simples/configuracao" element={<SimplesConfiguracaoPage />} />
+                <Route path="/fiscal/simples/apuracao" element={<SimplesApuracaoPage />} />
                 <Route path="/contabilidade/plano-contas" element={<PlanoContasPage />} />
                 <Route path="/contabilidade/lancamentos" element={<LancamentosContabeisPage />} />
                 <Route path="/contabilidade/centros-custo" element={<CentroCustoPage />} />

@@ -33,6 +33,8 @@ const menuItems: MenuItem[] = [
       { label: 'Natureza de Operação', path: '/fiscal/natureza-operacao' },
       { label: 'Importar NF-e', path: '/fiscal/importar-nfe' },
       { label: 'Mapeamento CFOP', path: '/fiscal/mapeamento-cfop' },
+      { label: 'Simples Nacional', path: '/fiscal/simples/configuracao' },
+      { label: 'Apuração DAS', path: '/fiscal/simples/apuracao' },
     ],
   },
   {
