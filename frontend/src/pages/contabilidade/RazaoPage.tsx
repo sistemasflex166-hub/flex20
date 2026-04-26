@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FileText } from 'lucide-react'
-import { relatoriosApi } from '@/api/contabilidade'
+import { relatoriosApi, planoContasApi, type RazaoResponse, type PlanoContas } from '@/api/contabilidade'
 import { useCompany } from '@/contexts/CompanyContext'
 import { NoCompanyBanner } from '@/components/fiscal/NoCompanyBanner'
 import { ContaSearch } from '@/components/contabilidade/ContaSearch'
@@ -27,15 +27,22 @@ function primeiroDiaMes() {
 
 export function RazaoPage() {
   const { company } = useCompany()
-  const [contaId, setContaId] = useState<number | null>(null)
-  const [contaLabel, setContaLabel] = useState('')
+  const [contaId, setContaId] = useState('')
   const [dataIni, setDataIni] = useState(primeiroDiaMes())
   const [dataFim, setDataFim] = useState(today())
   const [gerado, setGerado] = useState(false)
 
+  const { data: contas = [] } = useQuery({
+    queryKey: ['plano-contas', company?.id],
+    queryFn: () => planoContasApi.list(company!.id).then((r: { data: PlanoContas[] }) => r.data),
+    enabled: !!company,
+  })
+
+  const contasAnaliticas = contas.filter(c => c.tipo === 'analitica')
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['razao', company?.id, contaId, dataIni, dataFim],
-    queryFn: () => relatoriosApi.razao(company!.id, contaId!, dataIni, dataFim).then(r => r.data),
+    queryFn: () => relatoriosApi.razao(company!.id, Number(contaId), dataIni, dataFim).then((r: { data: RazaoResponse }) => r.data),
     enabled: false,
   })
 
@@ -58,9 +65,9 @@ export function RazaoPage() {
             <div className="w-80">
               <label className="mb-1 block text-xs font-medium text-gray-700">Conta *</label>
               <ContaSearch
-                companyId={company.id}
-                value={contaLabel}
-                onChange={(id, label) => { setContaId(id); setContaLabel(label) }}
+                contas={contasAnaliticas}
+                value={contaId}
+                onChange={id => setContaId(id)}
                 placeholder="Buscar conta analítica..."
               />
             </div>

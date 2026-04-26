@@ -164,6 +164,8 @@ export const planoContasApi = {
     api.patch<PlanoContas>(`/contabilidade/plano-contas/${id}`, data, { params: { company_id: companyId } }),
   deactivate: (id: number, companyId: number) =>
     api.patch<PlanoContas>(`/contabilidade/plano-contas/${id}/deactivate`, {}, { params: { company_id: companyId } }),
+  hardDelete: (id: number, companyId: number) =>
+    api.delete(`/contabilidade/plano-contas/${id}/definitivo`, { params: { company_id: companyId } }),
   copiar: (origemId: number, destinoId: number) =>
     api.post<{ copiadas: number }>(`/contabilidade/plano-contas/copiar`, {}, { params: { origem_id: origemId, destino_id: destinoId } }),
 }

@@ -32,13 +32,14 @@ function buildTree(contas: PlanoContas[]) {
 }
 
 function TreeRow({
-  conta, tree, depth, onEdit, onDeactivate,
+  conta, tree, depth, onEdit, onDeactivate, onHardDelete,
 }: {
   conta: PlanoContas
   tree: Map<number | null, PlanoContas[]>
   depth: number
   onEdit: (c: PlanoContas) => void
   onDeactivate: (id: number) => void
+  onHardDelete: (id: number) => void
 }) {
   const [open, setOpen] = useState(depth < 2)
   const children = tree.get(conta.id) ?? []
@@ -78,12 +79,22 @@ function TreeRow({
                 <button onClick={() => onDeactivate(conta.id)} className="text-xs text-red-400 hover:text-red-600">Inativar</button>
               </>
             )}
-            {isInativa && <span className="text-xs text-gray-300">Inativa</span>}
+            {isInativa && (
+              <>
+                <span className="text-xs text-gray-300">Inativa</span>
+                <button
+                  onClick={() => { if (window.confirm(`Excluir definitivamente a conta "${conta.classificacao} — ${conta.descricao}"? Esta ação é irreversível.`)) onHardDelete(conta.id) }}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Excluir
+                </button>
+              </>
+            )}
           </div>
         </td>
       </tr>
       {open && children.map(c => (
-        <TreeRow key={c.id} conta={c} tree={tree} depth={depth + 1} onEdit={onEdit} onDeactivate={onDeactivate} />
+        <TreeRow key={c.id} conta={c} tree={tree} depth={depth + 1} onEdit={onEdit} onDeactivate={onDeactivate} onHardDelete={onHardDelete} />
       ))}
     </>
   )
@@ -192,6 +203,13 @@ export function PlanoContasPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['plano-contas-todas', company?.id] }),
   })
 
+  const hardDeleteMut = useMutation({
+    mutationFn: (id: number) => planoContasApi.hardDelete(id, company!.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plano-contas-todas', company?.id] }),
+    onError: (e: { response?: { data?: { detail?: string } } }) =>
+      alert(e?.response?.data?.detail || 'Erro ao excluir conta.'),
+  })
+
   function openCreate() { setEditing(null); setForm(emptyForm); setError(''); setShowForm(true) }
   function openEdit(c: PlanoContas) {
     setEditing(c)
@@ -272,6 +290,7 @@ export function PlanoContasPage() {
                   <TreeRow key={c.id} conta={c} tree={tree} depth={0}
                     onEdit={openEdit}
                     onDeactivate={(id) => deactivateMut.mutate(id)}
+                    onHardDelete={(id) => hardDeleteMut.mutate(id)}
                   />
                 ))}
               </tbody>

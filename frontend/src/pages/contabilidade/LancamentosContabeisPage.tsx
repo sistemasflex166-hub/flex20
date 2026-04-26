@@ -53,8 +53,6 @@ export function LancamentosContabeisPage() {
   const [form, setForm] = useState<FormState>(emptyForm())
   const [filterData, setFilterData] = useState(today().slice(0, 7))
   const [error, setError] = useState('')
-  const [hardDeleteId, setHardDeleteId] = useState<number | null>(null)
-  const [confirmText, setConfirmText] = useState('')
 
   const dataIni = filterData ? `${filterData}-01` : undefined
   const dataFim = filterData
@@ -119,11 +117,7 @@ export function LancamentosContabeisPage() {
 
   const hardDeleteMut = useMutation({
     mutationFn: (id: number) => lancamentosApi.hardDelete(id, company!.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['lancamentos-lixeira'] })
-      setHardDeleteId(null)
-      setConfirmText('')
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['lancamentos-lixeira'] }),
   })
 
   const estornarMut = useMutation({
@@ -388,8 +382,9 @@ export function LancamentosContabeisPage() {
                       <td className="px-3 py-2 text-right text-xs font-medium text-gray-700">R$ {fmt(Number(l.valor))}</td>
                       <td className="px-3 py-2">
                         <button
-                          onClick={() => { setHardDeleteId(l.id); setConfirmText('') }}
-                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700"
+                          onClick={() => { if (window.confirm('Excluir definitivamente? Esta ação é irreversível.')) hardDeleteMut.mutate(l.id) }}
+                          disabled={hardDeleteMut.isPending}
+                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
                         >
                           <Trash2 size={12} /> Excluir definitivamente
                         </button>
@@ -403,41 +398,6 @@ export function LancamentosContabeisPage() {
         </div>
       )}
 
-      {/* Modal confirmação hard delete */}
-      {hardDeleteId !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-2 text-base font-semibold text-red-600">Exclusão Definitiva</h2>
-            <p className="mb-4 text-sm text-gray-600">
-              Esta ação é <strong>irreversível</strong>. O número do lançamento ficará como gap permanente na sequência.
-              <br /><br />
-              Digite <span className="font-mono font-bold">EXCLUIR</span> para confirmar:
-            </p>
-            <input
-              value={confirmText}
-              onChange={e => setConfirmText(e.target.value)}
-              className="input mb-4 w-full"
-              placeholder="EXCLUIR"
-              autoFocus
-            />
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => { setHardDeleteId(null); setConfirmText('') }}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => hardDeleteMut.mutate(hardDeleteId)}
-                disabled={confirmText !== 'EXCLUIR' || hardDeleteMut.isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {hardDeleteMut.isPending ? 'Excluindo...' : 'Excluir definitivamente'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

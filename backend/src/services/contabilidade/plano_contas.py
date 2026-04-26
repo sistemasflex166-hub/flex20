@@ -1,7 +1,9 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException
 
 from src.models.contabilidade.plano_contas import MascaraPlanoContas, PlanoContas
+from src.models.contabilidade.lancamento import LancamentoContabil
 from src.models.company import Company
 from src.schemas.contabilidade.plano_contas import MascaraCreate, PlanoContasCreate, PlanoContasUpdate
 
@@ -120,6 +122,43 @@ async def deactivate_conta(conta_id: int, company_id: int, db: AsyncSession) -> 
     await db.commit()
     await db.refresh(conta)
     return conta
+
+
+async def hard_delete_conta(conta_id: int, company_id: int, db: AsyncSession) -> None:
+    result = await db.execute(
+        select(PlanoContas).where(PlanoContas.id == conta_id, PlanoContas.company_id == company_id)
+    )
+    conta = result.scalar_one_or_none()
+    if not conta:
+        raise HTTPException(status_code=404, detail="Conta não encontrada.")
+
+    # Não permitir excluir se existir conta filha
+    filhos = await db.execute(
+        select(func.count()).where(PlanoContas.parent_id == conta_id)
+    )
+    if filhos.scalar_one() > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Não é possível excluir esta conta pois existem contas de nível inferior vinculadas a ela. Exclua-as primeiro.",
+        )
+
+    # Não permitir excluir se existir lançamento usando esta conta
+    uso = await db.execute(
+        select(func.count()).select_from(LancamentoContabil).where(
+            or_(
+                LancamentoContabil.conta_debito_id == conta_id,
+                LancamentoContabil.conta_credito_id == conta_id,
+            )
+        )
+    )
+    if uso.scalar_one() > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Não é possível excluir esta conta pois ela está sendo utilizada em lançamentos contábeis.",
+        )
+
+    await db.delete(conta)
+    await db.commit()
 
 
 async def copiar_plano(origem_id: int, destino_id: int, tenant_id: int | None, db: AsyncSession) -> int:

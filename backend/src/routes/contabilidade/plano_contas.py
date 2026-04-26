@@ -43,6 +43,12 @@ async def deactivate_conta(conta_id: int, company_id: int, db: AsyncSession = De
     return await svc.deactivate_conta(conta_id, company_id, db)
 
 
+@router.delete("/{conta_id}/definitivo", status_code=200)
+async def hard_delete_conta(conta_id: int, company_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    await svc.hard_delete_conta(conta_id, company_id, db)
+    return {"ok": True}
+
+
 @router.post("/copiar", status_code=200)
 async def copiar_plano(origem_id: int, destino_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     try:
