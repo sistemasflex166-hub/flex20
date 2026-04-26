@@ -7,6 +7,7 @@ from src.core.config import settings
 from src.core.database import Base
 import src.models.tenant  # noqa: F401
 import src.models.user    # noqa: F401
+import src.models.simples_nacional  # noqa: F401
 
 config = context.config
 if config.config_file_name:
