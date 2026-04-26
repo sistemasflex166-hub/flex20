@@ -106,6 +106,19 @@ async def deactivate_historico(id: int, company_id: int, db: AsyncSession) -> Hi
 
 # Lançamentos
 
+async def _reload(id: int, db: AsyncSession) -> LancamentoContabil:
+    result = await db.execute(
+        select(LancamentoContabil)
+        .options(
+            selectinload(LancamentoContabil.conta_debito),
+            selectinload(LancamentoContabil.conta_credito),
+            selectinload(LancamentoContabil.historico_padrao),
+        )
+        .where(LancamentoContabil.id == id)
+    )
+    return result.scalar_one()
+
+
 async def list_lancamentos(
     company_id: int,
     db: AsyncSession,
@@ -160,8 +173,7 @@ async def create_lancamento(
     )
     db.add(obj)
     await db.commit()
-    await db.refresh(obj)
-    return obj
+    return await _reload(obj.id, db)
 
 
 async def update_lancamento(id: int, company_id: int, user_id: int, data: LancamentoUpdate, db: AsyncSession) -> LancamentoContabil:
@@ -175,8 +187,7 @@ async def update_lancamento(id: int, company_id: int, user_id: int, data: Lancam
         setattr(obj, field, value)
     obj.usuario_edicao_id = user_id
     await db.commit()
-    await db.refresh(obj)
-    return obj
+    return await _reload(obj.id, db)
 
 
 async def soft_delete_lancamento(id: int, company_id: int, user_id: int, db: AsyncSession) -> LancamentoContabil:
@@ -225,8 +236,7 @@ async def estornar_lancamento(id: int, company_id: int, user_id: int, db: AsyncS
     )
     db.add(estorno)
     await db.commit()
-    await db.refresh(estorno)
-    return estorno
+    return await _reload(estorno.id, db)
 
 
 async def totalizador_dia(company_id: int, data: date, db: AsyncSession) -> TotalizadorDia:
