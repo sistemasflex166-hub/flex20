@@ -9,6 +9,7 @@ from src.schemas.simples_nacional.schemas import (
     HistoricoReceitaRequest, HistoricoReceitaResponse,
     PreviewRequest, PreviewResponse,
     ApuracaoRequest, ApuracaoResponse,
+    ReceitaMesResponse,
 )
 from src.services.simples_nacional import configuracao as cfg_svc
 from src.services.simples_nacional import calculo_das as das_svc
@@ -38,6 +39,18 @@ async def list_historico(company_id: int, db: AsyncSession = Depends(get_db), _:
 @router.post("/historico-receita", response_model=HistoricoReceitaResponse)
 async def salvar_receita(company_id: int, data: HistoricoReceitaRequest, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     return await cfg_svc.salvar_receita_manual(company_id, data.competencia_mes, data.competencia_ano, data.receita_bruta, db)
+
+
+@router.delete("/historico-receita/{receita_id}", status_code=204)
+async def deletar_receita(receita_id: int, company_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    await cfg_svc.deletar_receita_manual(company_id, receita_id, db)
+
+
+# ── Receita automática do mês ────────────────────────────────────────────────
+
+@router.get("/receita-mes", response_model=ReceitaMesResponse)
+async def get_receita_mes(company_id: int, mes: int, ano: int, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    return await das_svc.get_receita_automatica_mes(company_id, mes, ano, db)
 
 
 # ── Cálculo ──────────────────────────────────────────────────────────────────

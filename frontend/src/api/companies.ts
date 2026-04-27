@@ -14,6 +14,9 @@ export interface Company {
   state: string | null
   phone: string | null
   email: string | null
+  cnae: string | null
+  opening_date: string | null
+  accountant_id: number | null
   is_active: boolean
 }
 
@@ -35,6 +38,9 @@ export interface CompanyCreate {
   zip_code?: string
   phone?: string
   email?: string
+  cnae?: string
+  opening_date?: string
+  accountant_id?: number | null
 }
 
 // tenant_id só é necessário quando o usuário logado é platform_admin

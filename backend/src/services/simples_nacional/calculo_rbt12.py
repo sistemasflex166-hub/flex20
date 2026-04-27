@@ -39,22 +39,22 @@ async def calcular_rbt12(
             HistoricoReceita.competencia_ano.in_([a for _, a in meses]),
         )
     )
-    registros = {
-        (h.competencia_mes, h.competencia_ano): h
-        for h in result.scalars().all()
-    }
+    # Agrega todos os simples_codigo do mesmo mês (múltiplas atividades)
+    from collections import defaultdict
+    totais_mes: dict[tuple[int, int], Decimal] = defaultdict(Decimal)
+    for h in result.scalars().all():
+        totais_mes[(h.competencia_mes, h.competencia_ano)] += h.receita_bruta
 
     detalhamento = []
     total = Decimal("0.00")
     for m, a in meses:
-        rec = registros.get((m, a))
-        valor = rec.receita_bruta if rec else Decimal("0.00")
+        valor = totais_mes.get((m, a), Decimal("0.00"))
         total += valor
         detalhamento.append({
             "mes": m,
             "ano": a,
             "receita": valor,
-            "ausente": rec is None,
+            "ausente": (m, a) not in totais_mes,
         })
 
     # Ordena cronologicamente para exibição

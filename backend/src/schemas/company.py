@@ -1,3 +1,4 @@
+from datetime import date
 from pydantic import BaseModel
 from src.models.company import CompanyRegime, CompanyType
 
@@ -20,6 +21,9 @@ class CompanyCreate(BaseModel):
     zip_code: str | None = None
     phone: str | None = None
     email: str | None = None
+    cnae: str | None = None
+    opening_date: date | None = None
+    accountant_id: int | None = None
 
 
 class CompanyUpdate(BaseModel):
@@ -40,6 +44,9 @@ class CompanyUpdate(BaseModel):
     zip_code: str | None = None
     phone: str | None = None
     email: str | None = None
+    cnae: str | None = None
+    opening_date: date | None = None
+    accountant_id: int | None = None
 
 
 class CompanyResponse(BaseModel):
@@ -63,6 +70,9 @@ class CompanyResponse(BaseModel):
     zip_code: str | None
     phone: str | None
     email: str | None
+    cnae: str | None
+    opening_date: date | None
+    accountant_id: int | None
     is_active: bool
 
     model_config = {"from_attributes": True}

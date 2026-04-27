@@ -19,6 +19,7 @@ const menuItems: MenuItem[] = [
     icon: <Settings size={18} />,
     children: [
       { label: 'Empresas', path: '/configuracoes/empresas' },
+      { label: 'Contadores', path: '/configuracoes/contadores' },
     ],
   },
   {

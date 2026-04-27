@@ -7,6 +7,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { CompaniesPage } from '@/pages/fiscal/CompaniesPage'
+import { AccountantsPage } from '@/pages/fiscal/AccountantsPage'
 import { FiscalEntriesPage } from '@/pages/fiscal/FiscalEntriesPage'
 import { PartnersPage } from '@/pages/fiscal/PartnersPage'
 import { ProductsPage } from '@/pages/fiscal/ProductsPage'
@@ -45,6 +46,7 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/configuracoes/empresas" element={<CompaniesPage />} />
+                <Route path="/configuracoes/contadores" element={<AccountantsPage />} />
                 <Route path="/fiscal/lancamentos" element={<FiscalEntriesPage />} />
                 <Route path="/fiscal/clientes-fornecedores" element={<PartnersPage />} />
                 <Route path="/fiscal/produtos" element={<ProductsPage />} />

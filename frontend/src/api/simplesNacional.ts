@@ -15,9 +15,24 @@ export interface HistoricoReceita {
   company_id: number
   competencia_mes: number
   competencia_ano: number
+  simples_codigo: string
   receita_bruta: number
   origem: string
   updated_at: string
+}
+
+export interface DetalheAtividade {
+  simples_codigo: string
+  receita_bruta: number
+  origem: string
+}
+
+export interface ReceitaMes {
+  competencia_mes: number
+  competencia_ano: number
+  receita_total: number
+  detalhamento: DetalheAtividade[]
+  tem_automatico: boolean
 }
 
 export interface DetalheRbt12 {
@@ -110,4 +125,10 @@ export const simplesNacionalApi = {
 
   confirmar: (companyId: number, apuracaoId: number) =>
     api.post<ApuracaoSimples>(`/simples-nacional/apuracao/${apuracaoId}/confirmar`, {}, { params: { company_id: companyId } }),
+
+  getReceitaMes: (companyId: number, mes: number, ano: number) =>
+    api.get<ReceitaMes>('/simples-nacional/receita-mes', { params: { company_id: companyId, mes, ano } }),
+
+  deleteReceita: (companyId: number, receitaId: number) =>
+    api.delete(`/simples-nacional/historico-receita/${receitaId}`, { params: { company_id: companyId } }),
 }

@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from src.models.simples_nacional.configuracao_simples import ConfiguracaoSimples
 from src.models.simples_nacional.apuracao_simples import ApuracaoSimples
 from src.models.simples_nacional.historico_receita import HistoricoReceita
+from collections import defaultdict
 
 from .calculo_rbt12 import calcular_rbt12
 from .calculo_aliquota import buscar_faixa, calcular_aliquota_efetiva
@@ -16,6 +17,38 @@ from .distribuicao_tributos import distribuir_por_tributo
 
 
 LIMITE_SIMPLES = Decimal("4800000.00")
+
+
+async def get_receita_automatica_mes(
+    company_id: int,
+    competencia_mes: int,
+    competencia_ano: int,
+    db: AsyncSession,
+) -> dict:
+    """
+    Retorna a receita automática do mês atual, detalhada por simples_codigo.
+    Usado pelo frontend para pré-preencher o campo receita_mes.
+    """
+    result = await db.execute(
+        select(HistoricoReceita).where(
+            HistoricoReceita.company_id == company_id,
+            HistoricoReceita.competencia_mes == competencia_mes,
+            HistoricoReceita.competencia_ano == competencia_ano,
+        )
+    )
+    registros = list(result.scalars().all())
+    total = sum(r.receita_bruta for r in registros)
+    detalhamento = [
+        {"simples_codigo": r.simples_codigo, "receita_bruta": r.receita_bruta, "origem": r.origem}
+        for r in registros
+    ]
+    return {
+        "competencia_mes": competencia_mes,
+        "competencia_ano": competencia_ano,
+        "receita_total": Decimal(str(total)),
+        "detalhamento": detalhamento,
+        "tem_automatico": any(r.origem == "automatico" for r in registros),
+    }
 
 
 async def _buscar_configuracao(company_id: int, db: AsyncSession) -> ConfiguracaoSimples:
@@ -95,7 +128,7 @@ async def preview_calculo(
         "valor_das": valor_das,
         "distribuicao": distribuicao,
         "data_vencimento": _data_vencimento(competencia_mes, competencia_ano),
-        "inclui_cpp": faixa.anexo.inclui_cpp if hasattr(faixa, "anexo") and faixa.anexo else True,
+        "inclui_cpp": faixa.perc_cpp > 0,
     }
 
 

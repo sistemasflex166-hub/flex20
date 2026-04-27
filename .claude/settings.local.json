@@ -5,7 +5,12 @@
       "Bash(docker compose *)",
       "Bash(docker-compose --version)",
       "Bash(docker exec *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(netstat -ano)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue)",
+      "Bash(git add *)",
+      "Bash(docker cp *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

@@ -52,10 +52,18 @@ async def salvar_configuracao(
 
 
 async def list_historico_receita(company_id: int, db: AsyncSession) -> list[HistoricoReceita]:
+    """
+    Retorna todos os registros individuais (por simples_codigo).
+    O frontend agrupa por mês quando necessário para exibição consolidada.
+    """
     result = await db.execute(
         select(HistoricoReceita)
         .where(HistoricoReceita.company_id == company_id)
-        .order_by(HistoricoReceita.competencia_ano.desc(), HistoricoReceita.competencia_mes.desc())
+        .order_by(
+            HistoricoReceita.competencia_ano.desc(),
+            HistoricoReceita.competencia_mes.desc(),
+            HistoricoReceita.simples_codigo,
+        )
     )
     return list(result.scalars().all())
 
@@ -67,11 +75,13 @@ async def salvar_receita_manual(
     receita_bruta: Decimal,
     db: AsyncSession,
 ) -> HistoricoReceita:
+    # Lançamento manual sempre usa simples_codigo="geral"
     result = await db.execute(
         select(HistoricoReceita).where(
             HistoricoReceita.company_id == company_id,
             HistoricoReceita.competencia_mes == competencia_mes,
             HistoricoReceita.competencia_ano == competencia_ano,
+            HistoricoReceita.simples_codigo == "geral",
         )
     )
     rec = result.scalar_one_or_none()
@@ -89,6 +99,7 @@ async def salvar_receita_manual(
             company_id=company_id,
             competencia_mes=competencia_mes,
             competencia_ano=competencia_ano,
+            simples_codigo="geral",
             receita_bruta=receita_bruta,
             origem="manual",
         )
@@ -97,6 +108,26 @@ async def salvar_receita_manual(
     await db.commit()
     await db.refresh(rec)
     return rec
+
+
+async def deletar_receita_manual(
+    company_id: int,
+    receita_id: int,
+    db: AsyncSession,
+) -> None:
+    result = await db.execute(
+        select(HistoricoReceita).where(
+            HistoricoReceita.id == receita_id,
+            HistoricoReceita.company_id == company_id,
+        )
+    )
+    rec = result.scalar_one_or_none()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Receita não encontrada.")
+    if rec.origem == "automatico":
+        raise HTTPException(status_code=400, detail="Receita automática não pode ser excluída manualmente.")
+    await db.delete(rec)
+    await db.commit()
 
 
 async def registrar_receita_automatica(

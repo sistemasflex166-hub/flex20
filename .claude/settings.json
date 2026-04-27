@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/auth/login\" -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"sistemasflex166@gmail.com\\\\\",\\\\\"password\\\\\":\\\\\"\\\\\"}\")",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/auth/login\" -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"sistemasflex166@gmail.com\\\\\",\\\\\"password\\\\\":\\\\\"flex123\\\\\"}\")",
+      "Bash(git commit -m ' *)",
+      "Read(//c/Users/JefersonMachado/.claude/projects/c--Flex-2-0/memory/**)",
+      "Bash(xargs ls *)",
+      "Bash(docker restart *)",
+      "Bash(curl -s -X POST http://localhost:8000/auth/token -d 'username=sistemasflex166@gmail.com&password=flex123' -H 'Content-Type: application/x-www-form-urlencoded')",
+      "Bash(curl -s -X POST \"http://localhost:8000/simples-nacional/preview?company_id=1\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer $\\(curl -s -X POST http://localhost:8000/auth/token -d 'username=sistemasflex166@gmail.com&password=flex123' -H 'Content-Type: application/x-www-form-urlencoded')"
+    ],
+    "additionalDirectories": [
+      "c:\\Flex 2.0\\backend\\src\\models"
+    ]
+  }
+}

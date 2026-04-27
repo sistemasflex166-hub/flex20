@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 
 from src.models.fiscal_entry import FiscalEntry, FiscalEntryItem
 from src.schemas.fiscal_entry import FiscalEntryCreate, FiscalEntryUpdate
+from src.services.simples_nacional.receita_fiscal import recalcular_receita_mes
 
 
 async def _next_code(company_id: int, db: AsyncSession) -> int:
@@ -14,6 +15,21 @@ async def _next_code(company_id: int, db: AsyncSession) -> int:
     )
     current = result.scalar()
     return (current or 0) + 1
+
+
+async def _trigger_receita(entry: FiscalEntry, db: AsyncSession) -> None:
+    """Dispara recálculo de receita automática do Simples após mudança em lançamento fiscal."""
+    from src.services.simples_nacional.receita_fiscal import ENTRY_TYPES_RECEITA
+    if entry.entry_type in ENTRY_TYPES_RECEITA and entry.competence_date:
+        try:
+            await recalcular_receita_mes(
+                company_id=entry.company_id,
+                competencia_mes=entry.competence_date.month,
+                competencia_ano=entry.competence_date.year,
+                db=db,
+            )
+        except Exception:
+            pass  # receita automática nunca bloqueia operação fiscal
 
 
 async def _get_entry_with_items(entry_id: int, db: AsyncSession) -> FiscalEntry:
@@ -43,7 +59,9 @@ async def create_fiscal_entry(tenant_id: int, body: FiscalEntryCreate, db: Async
         db.add(item)
 
     await db.commit()
-    return await _get_entry_with_items(entry.id, db)
+    result_entry = await _get_entry_with_items(entry.id, db)
+    await _trigger_receita(result_entry, db)
+    return result_entry
 
 
 async def list_fiscal_entries(
@@ -99,7 +117,9 @@ async def update_fiscal_entry(entry_id: int, tenant_id: int, body: FiscalEntryUp
             db.add(item)
 
     await db.commit()
-    return await _get_entry_with_items(entry.id, db)
+    result_entry = await _get_entry_with_items(entry.id, db)
+    await _trigger_receita(result_entry, db)
+    return result_entry
 
 
 async def soft_delete_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) -> FiscalEntry:
@@ -107,7 +127,9 @@ async def soft_delete_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSessi
     entry.is_active = False
     entry.deleted_at = datetime.utcnow()
     await db.commit()
-    return await _get_entry_with_items(entry_id, db)
+    result_entry = await _get_entry_with_items(entry_id, db)
+    await _trigger_receita(result_entry, db)
+    return result_entry
 
 
 async def restore_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) -> FiscalEntry:
@@ -121,7 +143,9 @@ async def restore_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) 
     entry.is_active = True
     entry.deleted_at = None
     await db.commit()
-    return await _get_entry_with_items(entry_id, db)
+    result_entry = await _get_entry_with_items(entry_id, db)
+    await _trigger_receita(result_entry, db)
+    return result_entry
 
 
 async def hard_delete_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) -> None:

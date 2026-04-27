@@ -9,7 +9,8 @@ from src.core.database import Base
 class HistoricoReceita(Base):
     __tablename__ = "historico_receita_simples"
     __table_args__ = (
-        UniqueConstraint("company_id", "competencia_ano", "competencia_mes", name="uq_receita_empresa_competencia"),
+        # simples_codigo diferencia atividades: "geral" (manual), "I", "II", "III", "IV", "V"
+        UniqueConstraint("company_id", "competencia_ano", "competencia_mes", "simples_codigo", name="uq_receita_empresa_competencia_codigo"),
         {"schema": "public"},
     )
 
@@ -18,6 +19,9 @@ class HistoricoReceita(Base):
     competencia_mes: Mapped[int] = mapped_column(Integer, nullable=False)   # 1-12
     competencia_ano: Mapped[int] = mapped_column(Integer, nullable=False)
     receita_bruta: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False, default=Decimal("0.00"))
+
+    # "geral" para lançamentos manuais; "I","II","III","IV","V" para automático por anexo
+    simples_codigo: Mapped[str] = mapped_column(String(10), nullable=False, default="geral")
 
     # automatico | manual | importado
     origem: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")

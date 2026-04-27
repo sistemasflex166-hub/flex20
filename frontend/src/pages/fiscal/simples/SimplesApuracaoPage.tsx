@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calculator, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react'
+import { Calculator, CheckCircle, ChevronDown, ChevronRight, Zap } from 'lucide-react'
 import { simplesNacionalApi, type PreviewSimples, type ApuracaoSimples } from '@/api/simplesNacional'
 import { useCompany } from '@/contexts/CompanyContext'
 import { NoCompanyBanner } from '@/components/fiscal/NoCompanyBanner'
@@ -23,6 +23,15 @@ const STATUS_BADGE: Record<string, string> = {
   pago: 'bg-green-100 text-green-700',
 }
 
+const ANEXO_LABEL: Record<string, string> = {
+  I: 'Comércio',
+  II: 'Indústria',
+  III: 'Serviços (Fator R ≥ 28%)',
+  IV: 'Serviços (sem CPP)',
+  V: 'Serviços Intelectuais',
+  geral: 'Geral (manual)',
+}
+
 function hoje() {
   const d = new Date()
   return { mes: d.getMonth() + 1, ano: d.getFullYear() }
@@ -41,6 +50,20 @@ export function SimplesApuracaoPage() {
   const [preview, setPreview] = useState<PreviewSimples | null>(null)
   const [showRbt12, setShowRbt12] = useState(false)
   const [error, setError] = useState('')
+
+  // Busca receita automática do mês selecionado
+  const { data: receitaMes } = useQuery({
+    queryKey: ['simples-receita-mes', company?.id, form.competencia_mes, form.competencia_ano],
+    queryFn: () => simplesNacionalApi.getReceitaMes(company!.id, form.competencia_mes, form.competencia_ano).then(r => r.data),
+    enabled: !!company,
+  })
+
+  // Pré-preenche receita_mes quando carrega receita automática
+  useEffect(() => {
+    if (receitaMes && receitaMes.tem_automatico && receitaMes.receita_total > 0) {
+      setForm(f => ({ ...f, receita_mes: String(receitaMes.receita_total) }))
+    }
+  }, [receitaMes])
 
   const { data: apuracoes = [] } = useQuery({
     queryKey: ['simples-apuracoes', company?.id],
@@ -81,6 +104,8 @@ export function SimplesApuracaoPage() {
     onError: (e: { response?: { data?: { detail?: string } } }) => alert(e?.response?.data?.detail || 'Erro ao confirmar.'),
   })
 
+  const temMultiplosAnexos = receitaMes && receitaMes.detalhamento.filter(d => d.origem === 'automatico').length > 1
+
   return (
     <div>
       <div className="mb-6">
@@ -96,16 +121,40 @@ export function SimplesApuracaoPage() {
             <div className="flex flex-wrap items-end gap-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700">Mês *</label>
-                <select value={form.competencia_mes} onChange={e => { setForm(f => ({ ...f, competencia_mes: Number(e.target.value) })); setPreview(null) }} className="input w-36">
+                <select
+                  value={form.competencia_mes}
+                  onChange={e => {
+                    setForm(f => ({ ...f, competencia_mes: Number(e.target.value), receita_mes: '' }))
+                    setPreview(null)
+                  }}
+                  className="input w-36"
+                >
                   {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700">Ano *</label>
-                <input type="number" value={form.competencia_ano} onChange={e => { setForm(f => ({ ...f, competencia_ano: Number(e.target.value) })); setPreview(null) }} className="input w-28" min={2000} max={2099} />
+                <input
+                  type="number"
+                  value={form.competencia_ano}
+                  onChange={e => {
+                    setForm(f => ({ ...f, competencia_ano: Number(e.target.value), receita_mes: '' }))
+                    setPreview(null)
+                  }}
+                  className="input w-28"
+                  min={2000}
+                  max={2099}
+                />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Receita do Mês (R$) *</label>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                  Receita do Mês (R$) *
+                  {receitaMes?.tem_automatico && (
+                    <span className="flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-xs text-green-700">
+                      <Zap size={10} /> automático
+                    </span>
+                  )}
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -124,6 +173,34 @@ export function SimplesApuracaoPage() {
                 <Calculator size={15} /> {previewMut.isPending ? 'Calculando...' : 'Calcular Prévia'}
               </button>
             </div>
+
+            {/* Detalhamento por atividade */}
+            {receitaMes && receitaMes.detalhamento.length > 0 && (
+              <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Receita por Atividade — {MESES_CURTO[form.competencia_mes - 1]}/{form.competencia_ano}</p>
+                <div className="flex flex-wrap gap-2">
+                  {receitaMes.detalhamento.map(d => (
+                    <div key={d.simples_codigo} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs">
+                      <span className="font-semibold text-gray-700">
+                        {d.simples_codigo === 'geral' ? 'Geral' : `Anexo ${d.simples_codigo}`}
+                      </span>
+                      <span className="text-gray-400">—</span>
+                      <span className="text-gray-500">{ANEXO_LABEL[d.simples_codigo] ?? d.simples_codigo}</span>
+                      <span className="font-mono font-semibold text-gray-800">R$ {fmt(d.receita_bruta)}</span>
+                      {d.origem === 'automatico' && (
+                        <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-green-700">auto</span>
+                      )}
+                    </div>
+                  ))}
+                  {temMultiplosAnexos && (
+                    <p className="mt-1 w-full text-xs text-amber-600">
+                      Esta empresa possui receitas em múltiplos anexos. O cálculo usa o RBT12 e receita total consolidados — verifique o anexo principal configurado.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
           </div>
 

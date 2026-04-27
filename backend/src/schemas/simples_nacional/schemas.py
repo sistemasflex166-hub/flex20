@@ -32,11 +32,26 @@ class HistoricoReceitaResponse(BaseModel):
     company_id: int
     competencia_mes: int
     competencia_ano: int
+    simples_codigo: str
     receita_bruta: Decimal
     origem: str
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class DetalheAtividade(BaseModel):
+    simples_codigo: str
+    receita_bruta: Decimal
+    origem: str
+
+
+class ReceitaMesResponse(BaseModel):
+    competencia_mes: int
+    competencia_ano: int
+    receita_total: Decimal
+    detalhamento: list[DetalheAtividade]
+    tem_automatico: bool
 
 
 class PreviewRequest(BaseModel):

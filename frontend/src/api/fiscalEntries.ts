@@ -8,6 +8,8 @@ export interface FiscalEntryItem {
   description: string
   ncm: string | null
   cfop_id: number | null
+  product_id: number | null
+  service_item_id: number | null
   quantity: number
   unit: string
   unit_price: number

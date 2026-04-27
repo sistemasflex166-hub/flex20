@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, Plus, Pencil } from 'lucide-react'
+import { Save, Plus, Pencil, Trash2 } from 'lucide-react'
 import { simplesNacionalApi } from '@/api/simplesNacional'
 import { useCompany } from '@/contexts/CompanyContext'
 import { NoCompanyBanner } from '@/components/fiscal/NoCompanyBanner'
@@ -47,6 +47,12 @@ export function SimplesConfiguracaoPage() {
   const cfgMut = useMutation({
     mutationFn: () => simplesNacionalApi.salvarConfiguracao(company!.id, cfgForm),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['simples-config', company?.id] }); setEditingCfg(false) },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => simplesNacionalApi.deleteReceita(company!.id, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['simples-historico', company?.id] }),
+    onError: (e: { response?: { data?: { detail?: string } } }) => alert(e?.response?.data?.detail || 'Erro ao excluir receita.'),
   })
 
   const recMut = useMutation({
@@ -187,6 +193,7 @@ export function SimplesConfiguracaoPage() {
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase text-gray-400">
                     <th className="px-5 py-3">Competência</th>
+                    <th className="px-5 py-3">Atividade</th>
                     <th className="px-5 py-3 text-right">Receita Bruta</th>
                     <th className="px-5 py-3 text-center">Origem</th>
                     <th className="px-5 py-3"></th>
@@ -198,6 +205,9 @@ export function SimplesConfiguracaoPage() {
                       <td className="px-5 py-2 font-medium text-gray-700">
                         {MESES[h.competencia_mes - 1]}/{h.competencia_ano}
                       </td>
+                      <td className="px-5 py-2 text-xs text-gray-500">
+                        {h.simples_codigo === 'geral' ? 'Geral' : `Anexo ${h.simples_codigo}`}
+                      </td>
                       <td className="px-5 py-2 text-right font-mono text-sm text-gray-800">R$ {fmt(h.receita_bruta)}</td>
                       <td className="px-5 py-2 text-center">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${origemBadge(h.origem)}`}>
@@ -205,13 +215,21 @@ export function SimplesConfiguracaoPage() {
                         </span>
                       </td>
                       <td className="px-5 py-2">
-                        {h.origem !== 'automatico' && (
-                          <button
-                            onClick={() => openEditRec(h.competencia_mes, h.competencia_ano, h.receita_bruta)}
-                            className="text-brand-600 hover:text-brand-800"
-                          >
-                            <Pencil size={13} />
-                          </button>
+                        {h.simples_codigo === 'geral' && h.origem !== 'automatico' && (
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => openEditRec(h.competencia_mes, h.competencia_ano, h.receita_bruta)}
+                              className="text-brand-600 hover:text-brand-800"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => { if (window.confirm('Excluir este registro de receita?')) deleteMut.mutate(h.id) }}
+                              className="text-red-400 hover:text-red-600"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

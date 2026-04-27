@@ -18,7 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.company import Company
-from src.models.fiscal_entry import FiscalEntry
+from src.models.fiscal_entry import FiscalEntry, FiscalEntryItem
+from src.models.fiscal_base import ServiceItem
 from src.models.partner import Partner
 from src.services.nfse_parser import NfseData, NfseParte, parse_nfse_xml
 from src.services.fiscal_entry_service import _next_code
@@ -129,6 +130,62 @@ async def _find_or_create_partner(
         await db.flush()
 
     return partner
+
+
+async def _find_service_item_by_code(
+    cod_serv: str | None,
+    company_id: int,
+    db: AsyncSession,
+) -> ServiceItem | None:
+    """
+    Busca ServiceItem pelo cTribNac do XML.
+    Estratégia de match em ordem de prioridade:
+      1. service_code exato (ex: "171901" == "171901")
+      2. service_code prefixo do cTribNac (ex: "1719" é prefixo de "171901")
+      3. cTribNac começa com service_code (mesmo caso acima, via LIKE)
+      4. code do cadastro == cTribNac
+    """
+    if not cod_serv:
+        return None
+    clean = cod_serv.strip()
+
+    # 1. Match exato
+    result = await db.execute(
+        select(ServiceItem).where(
+            ServiceItem.company_id == company_id,
+            ServiceItem.is_active == True,
+            ServiceItem.service_code == clean,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if item:
+        return item
+
+    # 2. cTribNac começa com o service_code cadastrado (match por prefixo)
+    from sqlalchemy import func as sqlfunc
+    result2 = await db.execute(
+        select(ServiceItem).where(
+            ServiceItem.company_id == company_id,
+            ServiceItem.is_active == True,
+            ServiceItem.service_code.isnot(None),
+            sqlfunc.length(ServiceItem.service_code) > 0,
+        )
+    )
+    candidates = list(result2.scalars().all())
+    for candidate in candidates:
+        sc = (candidate.service_code or "").strip()
+        if sc and (clean.startswith(sc) or sc.startswith(clean)):
+            return candidate
+
+    # 3. Pelo campo 'code' do cadastro
+    result3 = await db.execute(
+        select(ServiceItem).where(
+            ServiceItem.company_id == company_id,
+            ServiceItem.is_active == True,
+            ServiceItem.code == clean,
+        )
+    )
+    return result3.scalar_one_or_none()
 
 
 async def _find_existing_entry(
@@ -269,6 +326,8 @@ async def import_nfse_xml(
         cofins_value=float(v.v_cofins),
     )
 
+    service_item = await _find_service_item_by_code(nfse.cod_serv, company.id, db)
+
     existing = await _find_existing_entry(company.id, nfse.n_nfse, nfse.serie, db)
     if existing:
         if on_duplicate == "skip":
@@ -277,6 +336,13 @@ async def import_nfse_xml(
             setattr(existing, field, value)
         existing.is_active = True
         entry = existing
+        await db.flush()
+        # Remove itens anteriores para recriar com dados atualizados
+        old_items_result = await db.execute(
+            select(FiscalEntryItem).where(FiscalEntryItem.entry_id == entry.id)
+        )
+        for old_item in old_items_result.scalars().all():
+            await db.delete(old_item)
         await db.flush()
     else:
         entry = FiscalEntry(
@@ -288,9 +354,26 @@ async def import_nfse_xml(
         db.add(entry)
         await db.flush()
 
+    # Cria item representando o serviço importado
+    item = FiscalEntryItem(
+        entry_id=entry.id,
+        company_id=company.id,
+        tenant_id=tenant_id,
+        service_item_id=service_item.id if service_item else None,
+        description=nfse.desc_serv or (service_item.name if service_item else "Serviço"),
+        unit="SV",
+        quantity=1,
+        unit_price=float(v.v_serv),
+        total=float(v.v_serv),
+        pis_value=float(v.v_pis),
+        cofins_value=float(v.v_cofins),
+    )
+    db.add(item)
+
     await db.commit()
 
+    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(FiscalEntry).where(FiscalEntry.id == entry.id)
+        select(FiscalEntry).options(selectinload(FiscalEntry.items)).where(FiscalEntry.id == entry.id)
     )
     return result.scalar_one()

@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, X, Trash2, RotateCcw, PlusCircle, Pencil, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, X, Trash2, RotateCcw, PlusCircle, Pencil, Filter, ChevronLeft, ChevronRight, Columns3 } from 'lucide-react'
 import { fiscalEntriesApi, type EntryType, type FiscalEntry } from '@/api/fiscalEntries'
 import { partnersApi } from '@/api/partners'
+import { serviceItemsApi } from '@/api/fiscalBase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompany } from '@/contexts/CompanyContext'
 import { NoCompanyBanner } from '@/components/fiscal/NoCompanyBanner'
@@ -331,6 +332,14 @@ export function FiscalEntriesPage() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(0)
+  const [showColPicker, setShowColPicker] = useState(false)
+  const [visibleCols, setVisibleCols] = useState({
+    item: true,
+    icms: true,
+    pis: true,
+    cofins: true,
+    iss: false,
+  })
 
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -352,6 +361,17 @@ export function FiscalEntriesPage() {
     queryFn: () => partnersApi.list(company!.id).then((r) => r.data),
     enabled: !!company,
   })
+
+  const { data: serviceItems = [] } = useQuery({
+    queryKey: ['service-items', company?.id],
+    queryFn: () => serviceItemsApi.list(company!.id).then((r) => r.data),
+    enabled: !!company,
+  })
+  const serviceItemMap = useMemo(() => {
+    const m: Record<number, string> = {}
+    for (const s of serviceItems) m[s.id] = s.code
+    return m
+  }, [serviceItems])
 
   // ── Filtragem client-side ──────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -410,6 +430,7 @@ export function FiscalEntriesPage() {
     icms: filtered.reduce((s, e) => s + Number(e.icms_value), 0),
     pis: filtered.reduce((s, e) => s + Number(e.pis_value), 0),
     cofins: filtered.reduce((s, e) => s + Number(e.cofins_value), 0),
+    iss: filtered.reduce((s, e) => s + Number(e.iss_value), 0),
   }), [filtered])
 
   // ── Formulário ─────────────────────────────────────────────────────────────
@@ -524,6 +545,74 @@ export function FiscalEntriesPage() {
             filtered={filtered.length}
           />
 
+          {/* Totais + seletor de colunas */}
+          {filtered.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <div className="flex flex-1 flex-wrap gap-3">
+                <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+                  <span className="text-xs text-gray-400">Total ({filtered.length} lanç.)</span>
+                  <p className="font-semibold text-gray-900">{fmtBRL(totals.gross)}</p>
+                </div>
+                {visibleCols.icms && (
+                  <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+                    <span className="text-xs text-gray-400">ICMS</span>
+                    <p className="font-medium text-gray-700">{fmtBRL(totals.icms)}</p>
+                  </div>
+                )}
+                {visibleCols.pis && (
+                  <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+                    <span className="text-xs text-gray-400">PIS</span>
+                    <p className="font-medium text-gray-700">{fmtBRL(totals.pis)}</p>
+                  </div>
+                )}
+                {visibleCols.cofins && (
+                  <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+                    <span className="text-xs text-gray-400">COFINS</span>
+                    <p className="font-medium text-gray-700">{fmtBRL(totals.cofins)}</p>
+                  </div>
+                )}
+                {visibleCols.iss && (
+                  <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+                    <span className="text-xs text-gray-400">ISS</span>
+                    <p className="font-medium text-gray-700">{fmtBRL(totals.iss)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Seletor de colunas */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowColPicker(v => !v)}
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                >
+                  <Columns3 size={13} /> Colunas
+                </button>
+                {showColPicker && (
+                  <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
+                    <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Colunas visíveis</p>
+                    {([
+                      { key: 'item',   label: 'Item de Serviço' },
+                      { key: 'icms',   label: 'ICMS' },
+                      { key: 'pis',    label: 'PIS' },
+                      { key: 'cofins', label: 'COFINS' },
+                      { key: 'iss',    label: 'ISS' },
+                    ] as { key: keyof typeof visibleCols; label: string }[]).map(({ key, label }) => (
+                      <label key={key} className="flex cursor-pointer items-center gap-2 py-1 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={visibleCols[key]}
+                          onChange={e => setVisibleCols(v => ({ ...v, [key]: e.target.checked }))}
+                          className="h-3.5 w-3.5 rounded border-gray-300 text-brand-600"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-gray-200 bg-white">
             {isLoading ? (
               <p className="p-6 text-sm text-gray-400">Carregando...</p>
@@ -534,24 +623,28 @@ export function FiscalEntriesPage() {
                   : 'Nenhum lançamento encontrado.'}
               </p>
             ) : (
-              <>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase text-gray-400">
-                      <th className="px-5 py-3">Cód.</th>
-                      <th className="px-5 py-3">Tipo</th>
-                      <th className="px-5 py-3">Data</th>
-                      <th className="px-5 py-3">Nº / Série</th>
-                      <th className="px-5 py-3">Parceiro</th>
-                      <th className="px-5 py-3 text-right">Total</th>
-                      <th className="px-5 py-3 text-right">ICMS</th>
-                      <th className="px-5 py-3 text-right">PIS</th>
-                      <th className="px-5 py-3 text-right">COFINS</th>
-                      <th className="px-5 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginated.map((e) => (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase text-gray-400">
+                    <th className="px-5 py-3">Cód.</th>
+                    <th className="px-5 py-3">Tipo</th>
+                    <th className="px-5 py-3">Data</th>
+                    <th className="px-5 py-3">Nº / Série</th>
+                    <th className="px-5 py-3">Parceiro</th>
+                    {visibleCols.item && <th className="px-5 py-3">Item</th>}
+                    <th className="px-5 py-3 text-right">Total</th>
+                    {visibleCols.icms   && <th className="px-5 py-3 text-right">ICMS</th>}
+                    {visibleCols.pis    && <th className="px-5 py-3 text-right">PIS</th>}
+                    {visibleCols.cofins && <th className="px-5 py-3 text-right">COFINS</th>}
+                    {visibleCols.iss    && <th className="px-5 py-3 text-right">ISS</th>}
+                    <th className="px-5 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((e) => {
+                    const firstSvcId = e.items.find(i => i.service_item_id)?.service_item_id
+                    const itemCode = firstSvcId ? serviceItemMap[firstSvcId] : null
+                    return (
                       <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
                         <td className="px-5 py-3 font-mono text-xs text-gray-500">{String(e.code).padStart(6, '0')}</td>
                         <td className="px-5 py-3">
@@ -572,12 +665,16 @@ export function FiscalEntriesPage() {
                         <td className="max-w-[180px] truncate px-5 py-3 text-gray-600" title={e.partner_name ?? ''}>
                           {e.partner_name || '—'}
                         </td>
-                        <td className="px-5 py-3 text-right font-medium text-gray-800">
-                          {fmtBRL(Number(e.total_gross))}
-                        </td>
-                        <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.icms_value))}</td>
-                        <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.pis_value))}</td>
-                        <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.cofins_value))}</td>
+                        {visibleCols.item && (
+                          <td className="px-5 py-3 font-mono text-xs text-brand-600" title={itemCode ? `Item: ${itemCode}` : 'Sem item de serviço'}>
+                            {itemCode || <span className="text-gray-300">—</span>}
+                          </td>
+                        )}
+                        <td className="px-5 py-3 text-right font-medium text-gray-800">{fmtBRL(Number(e.total_gross))}</td>
+                        {visibleCols.icms   && <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.icms_value))}</td>}
+                        {visibleCols.pis    && <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.pis_value))}</td>}
+                        {visibleCols.cofins && <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.cofins_value))}</td>}
+                        {visibleCols.iss    && <td className="px-5 py-3 text-right text-gray-500">{fmtBRL(Number(e.iss_value))}</td>}
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
                             {tab === 'active' ? (
@@ -597,25 +694,10 @@ export function FiscalEntriesPage() {
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                  {/* Rodapé de totais */}
-                  {filtered.length > 0 && (
-                    <tfoot>
-                      <tr className="border-t-2 border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600">
-                        <td className="px-5 py-2" colSpan={5}>
-                          Total ({filtered.length} lançamento{filtered.length !== 1 ? 's' : ''})
-                        </td>
-                        <td className="px-5 py-2 text-right text-gray-800">{fmtBRL(totals.gross)}</td>
-                        <td className="px-5 py-2 text-right">{fmtBRL(totals.icms)}</td>
-                        <td className="px-5 py-2 text-right">{fmtBRL(totals.pis)}</td>
-                        <td className="px-5 py-2 text-right">{fmtBRL(totals.cofins)}</td>
-                        <td />
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </>
+                    )
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
 
