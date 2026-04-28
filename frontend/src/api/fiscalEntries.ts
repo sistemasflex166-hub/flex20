@@ -8,6 +8,7 @@ export interface FiscalEntryItem {
   description: string
   ncm: string | null
   cfop_id: number | null
+  cfop_code: string | null
   product_id: number | null
   service_item_id: number | null
   quantity: number
@@ -115,4 +116,13 @@ export const fiscalEntriesApi = {
 
   hardDelete: (id: number, tenantId?: number) =>
     api.delete(`/fiscal-entries/${id}`, { params: tenantId ? { tenant_id: tenantId } : {} }),
+
+  bulkSoftDelete: (ids: number[], tenantId?: number) =>
+    api.post<{ deleted: number }>('/fiscal-entries/bulk-delete', { ids }, { params: tenantId ? { tenant_id: tenantId } : {} }),
+
+  bulkHardDelete: (ids: number[], tenantId?: number) =>
+    api.post<{ deleted: number }>('/fiscal-entries/bulk-hard-delete', { ids }, { params: tenantId ? { tenant_id: tenantId } : {} }),
+
+  clearTrash: (companyId: number, tenantId?: number) =>
+    api.post<{ deleted: number }>('/fiscal-entries/clear-trash', { company_id: companyId }, { params: tenantId ? { tenant_id: tenantId } : {} }),
 }

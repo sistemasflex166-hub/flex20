@@ -20,8 +20,8 @@ export interface AccountantCreate {
 }
 
 export const accountantsApi = {
-  list: () => api.get<Accountant[]>('/accountants/'),
-  create: (data: AccountantCreate) => api.post<Accountant>('/accountants/', data),
-  update: (id: number, data: Partial<AccountantCreate>) => api.patch<Accountant>(`/accountants/${id}`, data),
-  delete: (id: number) => api.delete(`/accountants/${id}`),
+  list: (tenantId?: number) => api.get<Accountant[]>('/accountants/', { params: tenantId ? { tenant_id: tenantId } : {} }),
+  create: (data: AccountantCreate, tenantId?: number) => api.post<Accountant>('/accountants/', data, { params: tenantId ? { tenant_id: tenantId } : {} }),
+  update: (id: number, data: Partial<AccountantCreate>, tenantId?: number) => api.patch<Accountant>(`/accountants/${id}`, data, { params: tenantId ? { tenant_id: tenantId } : {} }),
+  delete: (id: number, tenantId?: number) => api.delete(`/accountants/${id}`, { params: tenantId ? { tenant_id: tenantId } : {} }),
 }

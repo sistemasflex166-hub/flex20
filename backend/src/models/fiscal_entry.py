@@ -60,6 +60,11 @@ class FiscalEntry(Base):
     access_key: Mapped[str | None] = mapped_column(String(60), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Integração contábil
+    status_contabil: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pendente")
+    lancamento_contabil_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    erro_contabil: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Soft delete
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -116,4 +121,10 @@ class FiscalEntryItem(Base):
 
     __table_args__ = {"schema": "public"}
 
+    cfop: Mapped["CFOP | None"] = relationship("CFOP", foreign_keys=[cfop_id], lazy="select")
+
     entry: Mapped["FiscalEntry"] = relationship("FiscalEntry", back_populates="items")
+
+    @property
+    def cfop_code(self) -> str | None:
+        return self.cfop.code if self.cfop else None

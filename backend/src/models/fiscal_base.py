@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Numeric, func, UniqueConstraint
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Integer, Numeric, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
@@ -80,6 +80,10 @@ class CFOP(Base):
     is_input: Mapped[bool] = mapped_column(Boolean, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Integração contábil — modo conta_individual
+    conta_contabil_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    historico_padrao_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     __table_args__ = (
         UniqueConstraint("tenant_id", "code", name="uq_cfop_tenant_code"),
         {"schema": "public"},
@@ -101,6 +105,11 @@ class OperationNature(Base):
     cofins_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
     account_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_billing: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Integração contábil — modo conta_unica
+    conta_debito_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    conta_credito_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    historico_padrao_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

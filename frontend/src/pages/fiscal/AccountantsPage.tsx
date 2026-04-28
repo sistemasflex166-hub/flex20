@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, X, Pencil, Trash2 } from 'lucide-react'
 import { accountantsApi, type AccountantCreate } from '@/api/accountants'
+import { useAuth } from '@/contexts/AuthContext'
 
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -20,10 +21,12 @@ export function AccountantsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const qc = useQueryClient()
+  const { user } = useAuth()
+  const tenantId = user?.role === 'platform_admin' ? 1 : undefined
 
   const { data: accountants = [], isLoading } = useQuery({
-    queryKey: ['accountants'],
-    queryFn: () => accountantsApi.list().then(r => r.data),
+    queryKey: ['accountants', tenantId],
+    queryFn: () => accountantsApi.list(tenantId).then(r => r.data),
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
@@ -31,17 +34,17 @@ export function AccountantsPage() {
   })
 
   const createMut = useMutation({
-    mutationFn: (data: AccountantCreate) => accountantsApi.create(data),
+    mutationFn: (data: AccountantCreate) => accountantsApi.create(data, tenantId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['accountants'] }); closeForm() },
   })
 
   const updateMut = useMutation({
-    mutationFn: (data: FormData) => accountantsApi.update(editingId!, data),
+    mutationFn: (data: FormData) => accountantsApi.update(editingId!, data, tenantId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['accountants'] }); closeForm() },
   })
 
   const deleteMut = useMutation({
-    mutationFn: (id: number) => accountantsApi.delete(id),
+    mutationFn: (id: number) => accountantsApi.delete(id, tenantId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accountants'] }),
   })
 

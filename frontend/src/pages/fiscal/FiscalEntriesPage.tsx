@@ -112,7 +112,7 @@ function entryToForm(e: FiscalEntry): FormData {
       description: i.description,
       product_code: '',
       ncm: i.ncm ?? '',
-      cfop: '',
+      cfop: i.cfop_code ?? '',
       unit: i.unit,
       quantity: Number(i.quantity),
       unit_price: Number(i.unit_price),
@@ -333,6 +333,7 @@ export function FiscalEntriesPage() {
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(0)
   const [showColPicker, setShowColPicker] = useState(false)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [visibleCols, setVisibleCols] = useState({
     item: true,
     icms: true,
@@ -422,6 +423,7 @@ export function FiscalEntriesPage() {
   const handleFilterChange = (f: Filters) => {
     setFilters(f)
     setPage(0)
+    setSelected(new Set())
   }
 
   // ── Totais do rodapé ───────────────────────────────────────────────────────
@@ -460,6 +462,18 @@ export function FiscalEntriesPage() {
   const softDeleteMutation = useMutation({
     mutationFn: (id: number) => fiscalEntriesApi.softDelete(id, tenantId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }),
+  })
+  const bulkSoftDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => fiscalEntriesApi.bulkSoftDelete(ids, tenantId),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }); setSelected(new Set()) },
+  })
+  const bulkHardDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => fiscalEntriesApi.bulkHardDelete(ids, tenantId),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }); setSelected(new Set()) },
+  })
+  const clearTrashMutation = useMutation({
+    mutationFn: () => fiscalEntriesApi.clearTrash(company!.id, tenantId),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fiscal-entries'] }); setSelected(new Set()) },
   })
   const restoreMutation = useMutation({
     mutationFn: (id: number) => fiscalEntriesApi.restore(id, tenantId),
@@ -579,6 +593,19 @@ export function FiscalEntriesPage() {
                 )}
               </div>
 
+              {tab === 'active' && selected.size > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Mover ${selected.size} lançamento${selected.size !== 1 ? 's' : ''} para a lixeira?`))
+                      bulkSoftDeleteMutation.mutate([...selected])
+                  }}
+                  disabled={bulkSoftDeleteMutation.isPending}
+                  className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                >
+                  <Trash2 size={13} /> Excluir {selected.size} selecionado{selected.size !== 1 ? 's' : ''}
+                </button>
+              )}
+
               {/* Seletor de colunas */}
               <div className="relative">
                 <button
@@ -613,6 +640,65 @@ export function FiscalEntriesPage() {
             </div>
           )}
 
+          {tab === 'active' && selected.size > 0 && (
+            <div className="mb-3 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm">
+              <span className="text-red-700 font-medium">{selected.size} lançamento{selected.size !== 1 ? 's' : ''} selecionado{selected.size !== 1 ? 's' : ''}</span>
+              <button
+                onClick={() => {
+                  if (confirm(`Mover ${selected.size} lançamento${selected.size !== 1 ? 's' : ''} para a lixeira?`))
+                    bulkSoftDeleteMutation.mutate([...selected])
+                }}
+                disabled={bulkSoftDeleteMutation.isPending}
+                className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                <Trash2 size={13} /> Mover para lixeira
+              </button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="ml-auto text-xs text-red-400 hover:text-red-600"
+              >
+                Cancelar seleção
+              </button>
+            </div>
+          )}
+
+          {tab === 'trash' && (
+            <div className="mb-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm">
+              {selected.size > 0 ? (
+                <>
+                  <span className="text-gray-700 font-medium">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Excluir permanentemente ${selected.size} lançamento${selected.size !== 1 ? 's' : ''}? Esta ação é irreversível.`))
+                        bulkHardDeleteMutation.mutate([...selected])
+                    }}
+                    disabled={bulkHardDeleteMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                  >
+                    <Trash2 size={13} /> Excluir permanentemente
+                  </button>
+                  <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-gray-600">
+                    Cancelar seleção
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-gray-400">{entries.length} lançamento{entries.length !== 1 ? 's' : ''} na lixeira</span>
+              )}
+              {entries.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Limpar lixeira? Todos os ${entries.length} lançamentos serão excluídos permanentemente. Esta ação é irreversível.`))
+                      clearTrashMutation.mutate()
+                  }}
+                  disabled={clearTrashMutation.isPending}
+                  className="ml-auto flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  <Trash2 size={13} /> Limpar lixeira
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="rounded-xl border border-gray-200 bg-white">
             {isLoading ? (
               <p className="p-6 text-sm text-gray-400">Carregando...</p>
@@ -626,6 +712,19 @@ export function FiscalEntriesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase text-gray-400">
+                    {tab === 'active' && (
+                      <th className="pl-5 py-3 w-8">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-gray-300 text-brand-600"
+                          checked={paginated.length > 0 && paginated.every((e) => selected.has(e.id))}
+                          onChange={(ev) => {
+                            if (ev.target.checked) setSelected((s) => new Set([...s, ...paginated.map((e) => e.id)]))
+                            else setSelected((s) => { const n = new Set(s); paginated.forEach((e) => n.delete(e.id)); return n })
+                          }}
+                        />
+                      </th>
+                    )}
                     <th className="px-5 py-3">Cód.</th>
                     <th className="px-5 py-3">Tipo</th>
                     <th className="px-5 py-3">Data</th>
@@ -645,7 +744,17 @@ export function FiscalEntriesPage() {
                     const firstSvcId = e.items.find(i => i.service_item_id)?.service_item_id
                     const itemCode = firstSvcId ? serviceItemMap[firstSvcId] : null
                     return (
-                      <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <tr key={e.id} className={`border-b border-gray-50 hover:bg-gray-50 ${selected.has(e.id) ? 'bg-brand-50' : ''}`}>
+                        {tab === 'active' && (
+                          <td className="pl-5 py-3">
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 rounded border-gray-300 text-brand-600"
+                              checked={selected.has(e.id)}
+                              onChange={(ev) => setSelected((s) => { const n = new Set(s); ev.target.checked ? n.add(e.id) : n.delete(e.id); return n })}
+                            />
+                          </td>
+                        )}
                         <td className="px-5 py-3 font-mono text-xs text-gray-500">{String(e.code).padStart(6, '0')}</td>
                         <td className="px-5 py-3">
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -773,7 +882,7 @@ export function FiscalEntriesPage() {
                         <select className="input" value={watchPartnerId ?? ''} onChange={handlePartnerChange}>
                           <option value="">— Selecione ou deixe em branco —</option>
                           {partners.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}{p.cnpj_cpf ? ` — ${p.cnpj_cpf}` : ''}</option>
+                            <option key={p.id} value={p.id}>{String(p.code).padStart(4, '0')} — {p.name}{p.cnpj_cpf ? ` (${p.cnpj_cpf})` : ''}</option>
                           ))}
                         </select>
                       </div>

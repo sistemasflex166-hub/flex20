@@ -24,6 +24,7 @@ class CompanyCreate(BaseModel):
     cnae: str | None = None
     opening_date: date | None = None
     accountant_id: int | None = None
+    integracao_contabil_modo: str = "conta_unica"
 
 
 class CompanyUpdate(BaseModel):
@@ -47,6 +48,7 @@ class CompanyUpdate(BaseModel):
     cnae: str | None = None
     opening_date: date | None = None
     accountant_id: int | None = None
+    integracao_contabil_modo: str | None = None
 
 
 class CompanyResponse(BaseModel):
@@ -74,5 +76,6 @@ class CompanyResponse(BaseModel):
     opening_date: date | None
     accountant_id: int | None
     is_active: bool
+    integracao_contabil_modo: str
 
     model_config = {"from_attributes": True}

@@ -27,6 +27,9 @@ const schema = z.object({
   cofins_rate: z.number().min(0).max(100).optional(),
   account_code: z.string().optional(),
   is_billing: z.boolean().default(false),
+  conta_debito_id: z.coerce.number().optional().nullable(),
+  conta_credito_id: z.coerce.number().optional().nullable(),
+  historico_padrao_id: z.coerce.number().optional().nullable(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -109,6 +112,9 @@ export function OperationNaturesPage() {
       cofins_rate: n.cofins_rate ?? undefined,
       account_code: n.account_code ?? '',
       is_billing: n.is_billing ?? false,
+      conta_debito_id: n.conta_debito_id ?? null,
+      conta_credito_id: n.conta_credito_id ?? null,
+      historico_padrao_id: n.historico_padrao_id ?? null,
     })
     setShowForm(true)
   }
@@ -228,8 +234,25 @@ export function OperationNaturesPage() {
                 <RateInput label="Alíquota PIS" name="pis_rate" control={control} />
                 <RateInput label="Alíquota COFINS" name="cofins_rate" control={control} />
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Conta Contábil</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Conta Contábil (código legado)</label>
                   <input {...register('account_code')} placeholder="ex: 1.1.1.01" className="input" />
+                </div>
+                <div className="col-span-2 border-t border-gray-100 pt-3">
+                  <p className="mb-3 text-xs font-semibold uppercase text-gray-400">Integração Contábil — Modo Conta Única</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">Conta Débito (ID)</label>
+                      <input {...register('conta_debito_id')} type="number" className="input" placeholder="ID da conta" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">Conta Crédito (ID)</label>
+                      <input {...register('conta_credito_id')} type="number" className="input" placeholder="ID da conta" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">Histórico Padrão (ID)</label>
+                      <input {...register('historico_padrao_id')} type="number" className="input" placeholder="ID do histórico" />
+                    </div>
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <label className="flex cursor-pointer items-center gap-3">

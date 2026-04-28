@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.routes import auth, users, tenants, companies, partners, account_plans, fiscal_entries, fiscal_base, nfe_import, accountants
+from src.routes import auth, users, tenants, companies, partners, account_plans, fiscal_entries, fiscal_base, nfe_import, accountants, company_partners
 from src.routes.contabilidade import plano_contas as cont_plano_contas, lancamentos as cont_lancamentos, conta_bancaria as cont_conta_bancaria, saldo_inicial as cont_saldo_inicial, relatorios as cont_relatorios
 from src.routes.folha import cadastros as folha_cadastros
 from src.routes.simples_nacional.router import router as simples_router
@@ -32,6 +32,7 @@ app.include_router(fiscal_entries.router, prefix="/api/fiscal-entries", tags=["f
 app.include_router(fiscal_base.router, prefix="/api/fiscal-base", tags=["fiscal-base"])
 app.include_router(nfe_import.router, prefix="/api/nfe", tags=["nfe-import"])
 app.include_router(accountants.router, prefix="/api/accountants", tags=["accountants"])
+app.include_router(company_partners.router, prefix="/api/company-partners", tags=["company-partners"])
 app.include_router(cont_plano_contas.router, prefix="/api/contabilidade/plano-contas", tags=["contabilidade-plano-contas"])
 app.include_router(cont_lancamentos.router, prefix="/api/contabilidade/lancamentos", tags=["contabilidade-lancamentos"])
 app.include_router(cont_conta_bancaria.router, prefix="/api/contabilidade/contas-bancarias", tags=["contabilidade-contas-bancarias"])

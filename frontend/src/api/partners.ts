@@ -5,6 +5,7 @@ export type PersonType = 'juridica' | 'fisica'
 
 export interface Partner {
   id: number
+  code: number
   company_id: number
   tenant_id: number
   partner_type: PartnerType
@@ -19,6 +20,7 @@ export interface Partner {
   phone: string | null
   email: string | null
   is_active: boolean
+  conta_contabil_id: number | null
 }
 
 export interface PartnerCreate {
@@ -38,6 +40,7 @@ export interface PartnerCreate {
   zip_code?: string
   phone?: string
   email?: string
+  conta_contabil_id?: number | null
 }
 
 export const partnersApi = {

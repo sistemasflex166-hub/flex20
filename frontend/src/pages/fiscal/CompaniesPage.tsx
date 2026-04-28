@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, X, Pencil } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, UserPlus } from 'lucide-react'
 import { companiesApi, type Company, type CompanyCreate } from '@/api/companies'
 import { accountantsApi } from '@/api/accountants'
+import { companyPartnersApi, type CompanyPartner, type CompanyPartnerCreate } from '@/api/companyPartners'
 import { useAuth } from '@/contexts/AuthContext'
 
 const schema = z.object({
@@ -21,6 +22,7 @@ const schema = z.object({
   cnae: z.string().optional(),
   opening_date: z.string().optional(),
   accountant_id: z.coerce.number().optional().nullable(),
+  integracao_contabil_modo: z.enum(['conta_unica', 'conta_individual']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -59,8 +61,8 @@ export function CompaniesPage() {
   })
 
   const { data: accountants = [] } = useQuery({
-    queryKey: ['accountants'],
-    queryFn: () => accountantsApi.list().then(r => r.data),
+    queryKey: ['accountants', tenantId],
+    queryFn: () => accountantsApi.list(tenantId).then(r => r.data),
   })
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -83,11 +85,62 @@ export function CompaniesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
   })
 
+  // ── Quadro Societário ─────────────────────────────────────────────────────
+  const [showPartnerForm, setShowPartnerForm] = useState(false)
+  const [editingPartner, setEditingPartner] = useState<CompanyPartner | null>(null)
+  const partnerForm = useForm<CompanyPartnerCreate>({ defaultValues: { is_responsible: false } })
+
+  const { data: companyPartners = [] } = useQuery({
+    queryKey: ['company-partners', editingCompany?.id],
+    queryFn: () => companyPartnersApi.list(editingCompany!.id).then(r => r.data),
+    enabled: !!editingCompany && modalTab === 'complementar',
+  })
+
+  const createPartnerMutation = useMutation({
+    mutationFn: (data: CompanyPartnerCreate) => companyPartnersApi.create(editingCompany!.id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-partners', editingCompany?.id] }); setShowPartnerForm(false); partnerForm.reset({ is_responsible: false }) },
+  })
+
+  const updatePartnerMutation = useMutation({
+    mutationFn: (data: CompanyPartnerCreate) => companyPartnersApi.update(editingPartner!.id, editingCompany!.id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-partners', editingCompany?.id] }); setShowPartnerForm(false); setEditingPartner(null); partnerForm.reset({ is_responsible: false }) },
+  })
+
+  const deletePartnerMutation = useMutation({
+    mutationFn: (id: number) => companyPartnersApi.delete(id, editingCompany!.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['company-partners', editingCompany?.id] }),
+  })
+
+  function openPartnerCreate() {
+    setEditingPartner(null)
+    partnerForm.reset({ is_responsible: false })
+    setShowPartnerForm(true)
+  }
+
+  function openPartnerEdit(p: CompanyPartner) {
+    setEditingPartner(p)
+    partnerForm.reset({
+      name: p.name, cpf: p.cpf ?? '', rg: p.rg ?? '', rg_issuer: p.rg_issuer ?? '',
+      birth_date: p.birth_date ?? '', phone: p.phone ?? '', email: p.email ?? '',
+      equity_share: p.equity_share ?? undefined,
+      address: p.address ?? '', address_number: p.address_number ?? '',
+      complement: p.complement ?? '', neighborhood: p.neighborhood ?? '',
+      city: p.city ?? '', state: p.state ?? '', zip_code: p.zip_code ?? '',
+      is_responsible: p.is_responsible,
+    })
+    setShowPartnerForm(true)
+  }
+
+  function onPartnerSubmit(data: CompanyPartnerCreate) {
+    if (editingPartner) updatePartnerMutation.mutate(data)
+    else createPartnerMutation.mutate(data)
+  }
+
   function openCreate() {
     setModalMode('create')
     setModalTab('principal')
     setEditingCompany(null)
-    reset({ company_type: 'ltda', regime: 'simples_nacional' })
+    reset({ company_type: 'ltda', regime: 'simples_nacional', integracao_contabil_modo: 'conta_unica' })
     setShowForm(true)
   }
 
@@ -108,6 +161,7 @@ export function CompaniesPage() {
       cnae: c.cnae ?? '',
       opening_date: c.opening_date ?? '',
       accountant_id: c.accountant_id ?? null,
+      integracao_contabil_modo: (c.integracao_contabil_modo ?? 'conta_unica') as FormData['integracao_contabil_modo'],
     })
     setShowForm(true)
   }
@@ -272,20 +326,165 @@ export function CompaniesPage() {
                           ))}
                         </select>
                       </div>
+                      <div className="col-span-2">
+                        <label className="mb-1 block text-xs font-medium text-gray-700">Modo de Integração Contábil</label>
+                        <select {...register('integracao_contabil_modo')} className="input">
+                          <option value="conta_unica">Conta Única (Clientes/Fornecedores Diversos)</option>
+                          <option value="conta_individual">Conta Individual por Cliente/Fornecedor</option>
+                        </select>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {`Conta Única: usa conta genérica definida na Natureza de Operação. Conta Individual: cada cliente/fornecedor tem sua própria conta contábil.`}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Aba Informações Complementares */}
                 {modalTab === 'complementar' && (
-                  <div className="space-y-6">
-                    {/* Quadro Societário — estrutura futura */}
-                    <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center">
-                      <p className="text-sm font-medium text-gray-500">Quadro Societário</p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        Em breve: cadastro de sócios, capital social, cotas e percentuais de participação.
-      </p>
-                    </div>
+                  <div className="space-y-4">
+                    {!editingCompany ? (
+                      <p className="text-sm text-gray-400">Salve a empresa primeiro para cadastrar sócios.</p>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-gray-700">Quadro Societário</p>
+                          <button
+                            type="button"
+                            onClick={openPartnerCreate}
+                            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+                          >
+                            <UserPlus size={13} /> Adicionar Sócio
+                          </button>
+                        </div>
+
+                        {companyPartners.length === 0 ? (
+                          <p className="text-sm text-gray-400">Nenhum sócio cadastrado.</p>
+                        ) : (
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase text-gray-400">
+                                <th className="py-2 pr-4">Nome</th>
+                                <th className="py-2 pr-4">CPF</th>
+                                <th className="py-2 pr-4">Participação</th>
+                                <th className="py-2 pr-4">Responsável</th>
+                                <th className="py-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {companyPartners.map((p) => (
+                                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                  <td className="py-2 pr-4 font-medium text-gray-800">{p.name}</td>
+                                  <td className="py-2 pr-4 text-gray-500">{p.cpf || '—'}</td>
+                                  <td className="py-2 pr-4 text-gray-500">{p.equity_share != null ? `${p.equity_share}%` : '—'}</td>
+                                  <td className="py-2 pr-4">
+                                    {p.is_responsible && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">Sim</span>}
+                                  </td>
+                                  <td className="py-2">
+                                    <div className="flex items-center gap-2">
+                                      <button type="button" onClick={() => openPartnerEdit(p)} className="text-brand-600 hover:text-brand-800"><Pencil size={13} /></button>
+                                      <button
+                                        type="button"
+                                        onClick={() => { if (confirm(`Remover ${p.name}?`)) deletePartnerMutation.mutate(p.id) }}
+                                        className="text-red-400 hover:text-red-600"
+                                      ><Trash2 size={13} /></button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+
+                        {showPartnerForm && (
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+                            <p className="text-sm font-semibold text-gray-700">{editingPartner ? 'Editar Sócio' : 'Novo Sócio'}</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="col-span-2">
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Nome *</label>
+                                <input {...partnerForm.register('name')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">CPF</label>
+                                <input {...partnerForm.register('cpf')} className="input" placeholder="000.000.000-00" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Data de Nascimento</label>
+                                <input {...partnerForm.register('birth_date')} type="date" className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">RG</label>
+                                <input {...partnerForm.register('rg')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Órgão Expedidor</label>
+                                <input {...partnerForm.register('rg_issuer')} className="input" placeholder="SSP/SP" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Telefone</label>
+                                <input {...partnerForm.register('phone')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">E-mail</label>
+                                <input {...partnerForm.register('email')} type="email" className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Participação (%)</label>
+                                <input {...partnerForm.register('equity_share', { valueAsNumber: true })} type="number" step="0.01" min="0" max="100" className="input" />
+                              </div>
+                              <div className="flex items-center gap-2 pt-5">
+                                <input {...partnerForm.register('is_responsible')} type="checkbox" id="is_responsible" className="h-4 w-4 rounded border-gray-300 text-brand-600" />
+                                <label htmlFor="is_responsible" className="text-xs text-gray-700">Sócio Responsável</label>
+                              </div>
+                              <div className="col-span-2 border-t border-gray-200 pt-3">
+                                <p className="mb-2 text-xs font-semibold uppercase text-gray-400">Endereço</p>
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">CEP</label>
+                                <input {...partnerForm.register('zip_code')} className="input" placeholder="00000-000" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Logradouro</label>
+                                <input {...partnerForm.register('address')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Número</label>
+                                <input {...partnerForm.register('address_number')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Complemento</label>
+                                <input {...partnerForm.register('complement')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Bairro</label>
+                                <input {...partnerForm.register('neighborhood')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Cidade</label>
+                                <input {...partnerForm.register('city')} className="input" />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">UF</label>
+                                <input {...partnerForm.register('state')} className="input" maxLength={2} placeholder="SP" />
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => { setShowPartnerForm(false); setEditingPartner(null); partnerForm.reset({ is_responsible: false }) }}
+                                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+                              >Cancelar</button>
+                              <button
+                                type="button"
+                                onClick={partnerForm.handleSubmit(onPartnerSubmit)}
+                                disabled={createPartnerMutation.isPending || updatePartnerMutation.isPending}
+                                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                              >{createPartnerMutation.isPending || updatePartnerMutation.isPending ? 'Salvando...' : 'Salvar Sócio'}</button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </div>

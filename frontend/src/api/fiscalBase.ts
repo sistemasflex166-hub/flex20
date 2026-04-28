@@ -52,12 +52,16 @@ export interface CFOP {
   description: string
   is_input: boolean
   is_active: boolean
+  conta_contabil_id: number | null
+  historico_padrao_id: number | null
 }
 
 export interface CFOPCreate {
   code: string
   description: string
   is_input: boolean
+  conta_contabil_id?: number | null
+  historico_padrao_id?: number | null
 }
 
 export interface OperationNature {
@@ -72,6 +76,9 @@ export interface OperationNature {
   account_code: string | null
   is_billing: boolean
   is_active: boolean
+  conta_debito_id: number | null
+  conta_credito_id: number | null
+  historico_padrao_id: number | null
 }
 
 export interface OperationNatureCreate {
@@ -83,6 +90,9 @@ export interface OperationNatureCreate {
   cofins_rate?: number
   account_code?: string
   is_billing?: boolean
+  conta_debito_id?: number | null
+  conta_credito_id?: number | null
+  historico_padrao_id?: number | null
 }
 
 export type ProductUpdate = Partial<ProductCreate>

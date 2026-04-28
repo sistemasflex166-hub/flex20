@@ -76,12 +76,16 @@ class CFOPCreate(BaseModel):
     code: str
     description: str
     is_input: bool
+    conta_contabil_id: int | None = None
+    historico_padrao_id: int | None = None
 
 
 class CFOPUpdate(BaseModel):
     code: str | None = None
     description: str | None = None
     is_input: bool | None = None
+    conta_contabil_id: int | None = None
+    historico_padrao_id: int | None = None
 
 
 class CFOPResponse(BaseModel):
@@ -90,6 +94,8 @@ class CFOPResponse(BaseModel):
     description: str
     is_input: bool
     is_active: bool
+    conta_contabil_id: int | None
+    historico_padrao_id: int | None
 
     model_config = {"from_attributes": True}
 
@@ -103,6 +109,9 @@ class OperationNatureCreate(BaseModel):
     cofins_rate: float | None = None
     account_code: str | None = None
     is_billing: bool = False
+    conta_debito_id: int | None = None
+    conta_credito_id: int | None = None
+    historico_padrao_id: int | None = None
 
 
 class OperationNatureUpdate(BaseModel):
@@ -114,6 +123,9 @@ class OperationNatureUpdate(BaseModel):
     cofins_rate: float | None = None
     account_code: str | None = None
     is_billing: bool | None = None
+    conta_debito_id: int | None = None
+    conta_credito_id: int | None = None
+    historico_padrao_id: int | None = None
 
 
 class OperationNatureResponse(BaseModel):
@@ -128,5 +140,8 @@ class OperationNatureResponse(BaseModel):
     account_code: str | None
     is_billing: bool
     is_active: bool
+    conta_debito_id: int | None
+    conta_credito_id: int | None
+    historico_padrao_id: int | None
 
     model_config = {"from_attributes": True}

@@ -21,7 +21,7 @@ from sqlalchemy.orm import selectinload
 
 from src.models.company import Company
 from src.models.cfop_mapping import CfopMapping
-from src.models.fiscal_base import Product
+from src.models.fiscal_base import Product, CFOP
 from src.models.fiscal_entry import FiscalEntry, FiscalEntryItem
 from src.models.partner import Partner
 from src.services.nfe_parser import NFeData, NFeItem, NFeParte, NFeEndereco, parse_nfe_xml
@@ -260,6 +260,11 @@ async def _build_items_async(
     for nfe_item in nfe_items:
         cfop_code = cfop_map.get(nfe_item.cfop, nfe_item.cfop) if is_purchase else nfe_item.cfop
 
+        cfop_result = await db.execute(
+            select(CFOP).where(CFOP.code == cfop_code, CFOP.tenant_id == tenant_id)
+        )
+        cfop_obj = cfop_result.scalar_one_or_none()
+
         # Cria ou localiza produto pelo cProd
         product = await _find_or_create_product(
             c_prod=nfe_item.code or "",
@@ -278,6 +283,7 @@ async def _build_items_async(
             company_id=company_id,
             tenant_id=tenant_id,
             product_id=product.id if product else None,
+            cfop_id=cfop_obj.id if cfop_obj else None,
             description=nfe_item.description,
             ncm=nfe_item.ncm,
             quantity=float(nfe_item.quantity),

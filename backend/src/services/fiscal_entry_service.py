@@ -34,7 +34,7 @@ async def _trigger_receita(entry: FiscalEntry, db: AsyncSession) -> None:
 
 async def _get_entry_with_items(entry_id: int, db: AsyncSession) -> FiscalEntry:
     result = await db.execute(
-        select(FiscalEntry).options(selectinload(FiscalEntry.items)).where(FiscalEntry.id == entry_id)
+        select(FiscalEntry).options(selectinload(FiscalEntry.items).selectinload(FiscalEntryItem.cfop)).where(FiscalEntry.id == entry_id)
     )
     return result.scalar_one()
 
@@ -71,7 +71,7 @@ async def list_fiscal_entries(
     include_inactive: bool,
     db: AsyncSession,
 ) -> list[FiscalEntry]:
-    q = select(FiscalEntry).options(selectinload(FiscalEntry.items)).where(FiscalEntry.tenant_id == tenant_id)
+    q = select(FiscalEntry).options(selectinload(FiscalEntry.items).selectinload(FiscalEntryItem.cfop)).where(FiscalEntry.tenant_id == tenant_id)
     if company_id:
         q = q.where(FiscalEntry.company_id == company_id)
     if entry_type:
@@ -85,7 +85,7 @@ async def list_fiscal_entries(
 
 async def get_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) -> FiscalEntry:
     result = await db.execute(
-        select(FiscalEntry).options(selectinload(FiscalEntry.items))
+        select(FiscalEntry).options(selectinload(FiscalEntry.items).selectinload(FiscalEntryItem.cfop))
         .where(FiscalEntry.id == entry_id, FiscalEntry.tenant_id == tenant_id)
     )
     entry = result.scalar_one_or_none()
@@ -134,7 +134,7 @@ async def soft_delete_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSessi
 
 async def restore_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) -> FiscalEntry:
     result = await db.execute(
-        select(FiscalEntry).options(selectinload(FiscalEntry.items))
+        select(FiscalEntry).options(selectinload(FiscalEntry.items).selectinload(FiscalEntryItem.cfop))
         .where(FiscalEntry.id == entry_id, FiscalEntry.tenant_id == tenant_id)
     )
     entry = result.scalar_one_or_none()
@@ -146,6 +146,55 @@ async def restore_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) 
     result_entry = await _get_entry_with_items(entry_id, db)
     await _trigger_receita(result_entry, db)
     return result_entry
+
+
+async def bulk_soft_delete_fiscal_entries(ids: list[int], tenant_id: int, db: AsyncSession) -> int:
+    result = await db.execute(
+        select(FiscalEntry).where(
+            FiscalEntry.id.in_(ids),
+            FiscalEntry.tenant_id == tenant_id,
+            FiscalEntry.is_active.is_(True),
+        )
+    )
+    entries = list(result.scalars().all())
+    now = datetime.utcnow()
+    for entry in entries:
+        entry.is_active = False
+        entry.deleted_at = now
+    await db.commit()
+    for entry in entries:
+        await _trigger_receita(entry, db)
+    return len(entries)
+
+
+async def bulk_hard_delete_fiscal_entries(ids: list[int], tenant_id: int, db: AsyncSession) -> int:
+    result = await db.execute(
+        select(FiscalEntry).where(
+            FiscalEntry.id.in_(ids),
+            FiscalEntry.tenant_id == tenant_id,
+            FiscalEntry.is_active.is_(False),
+        )
+    )
+    entries = list(result.scalars().all())
+    for entry in entries:
+        await db.delete(entry)
+    await db.commit()
+    return len(entries)
+
+
+async def clear_trash_fiscal_entries(company_id: int, tenant_id: int, db: AsyncSession) -> int:
+    result = await db.execute(
+        select(FiscalEntry).where(
+            FiscalEntry.company_id == company_id,
+            FiscalEntry.tenant_id == tenant_id,
+            FiscalEntry.is_active.is_(False),
+        )
+    )
+    entries = list(result.scalars().all())
+    for entry in entries:
+        await db.delete(entry)
+    await db.commit()
+    return len(entries)
 
 
 async def hard_delete_fiscal_entry(entry_id: int, tenant_id: int, db: AsyncSession) -> None:

@@ -31,6 +31,7 @@ class FiscalEntryItemResponse(FiscalEntryItemCreate):
     entry_id: int
     company_id: int
     tenant_id: int
+    cfop_code: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -128,5 +129,20 @@ class FiscalEntryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: list[FiscalEntryItemResponse] = []
+    status_contabil: str
+    lancamento_contabil_id: Optional[int]
+    erro_contabil: Optional[str]
 
     model_config = {"from_attributes": True}
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[int]
+
+
+class ClearTrashRequest(BaseModel):
+    company_id: int
+
+
+class BulkDeleteResponse(BaseModel):
+    deleted: int

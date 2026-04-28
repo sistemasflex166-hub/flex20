@@ -60,6 +60,8 @@ class Company(Base):
     opening_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     accountant_id: Mapped[int | None] = mapped_column(ForeignKey("public.accountants.id"), nullable=True)
 
+    integracao_contabil_modo: Mapped[str] = mapped_column(String(20), nullable=False, server_default="conta_unica")
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -73,3 +75,4 @@ class Company(Base):
 
     tenant: Mapped["Tenant"] = relationship("Tenant")
     accountant: Mapped["Accountant"] = relationship("Accountant", foreign_keys=[accountant_id])
+    partners: Mapped[list["CompanyPartner"]] = relationship("CompanyPartner", back_populates="company", cascade="all, delete-orphan")

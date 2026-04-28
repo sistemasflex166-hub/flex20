@@ -18,6 +18,7 @@ export interface Company {
   opening_date: string | null
   accountant_id: number | null
   is_active: boolean
+  integracao_contabil_modo: string
 }
 
 export interface CompanyCreate {
@@ -41,6 +42,7 @@ export interface CompanyCreate {
   cnae?: string
   opening_date?: string
   accountant_id?: number | null
+  integracao_contabil_modo?: string
 }
 
 // tenant_id só é necessário quando o usuário logado é platform_admin

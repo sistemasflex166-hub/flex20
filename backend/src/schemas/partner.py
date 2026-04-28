@@ -19,6 +19,7 @@ class PartnerCreate(BaseModel):
     zip_code: str | None = None
     phone: str | None = None
     email: str | None = None
+    conta_contabil_id: int | None = None
 
 
 class PartnerUpdate(BaseModel):
@@ -38,6 +39,7 @@ class PartnerUpdate(BaseModel):
     zip_code: str | None = None
     phone: str | None = None
     email: str | None = None
+    conta_contabil_id: int | None = None
 
 
 class PartnerResponse(BaseModel):
@@ -57,5 +59,6 @@ class PartnerResponse(BaseModel):
     phone: str | None
     email: str | None
     is_active: bool
+    conta_contabil_id: int | None
 
     model_config = {"from_attributes": True}

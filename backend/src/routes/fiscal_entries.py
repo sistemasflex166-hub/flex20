@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.core.deps import require_office_user
 from src.models.user import User, UserRole
-from src.schemas.fiscal_entry import FiscalEntryCreate, FiscalEntryUpdate, FiscalEntryResponse
+from src.schemas.fiscal_entry import FiscalEntryCreate, FiscalEntryUpdate, FiscalEntryResponse, BulkDeleteRequest, BulkDeleteResponse, ClearTrashRequest
 from src.services import fiscal_entry_service
 
 router = APIRouter()
@@ -61,6 +61,45 @@ async def update_fiscal_entry(
     current_user: User = Depends(require_office_user),
 ):
     return await fiscal_entry_service.update_fiscal_entry(entry_id, _resolve_tenant(current_user, tenant_id), body, db)
+
+
+@router.post("/bulk-delete", response_model=BulkDeleteResponse)
+async def bulk_soft_delete_fiscal_entries(
+    body: BulkDeleteRequest,
+    tenant_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_office_user),
+):
+    deleted = await fiscal_entry_service.bulk_soft_delete_fiscal_entries(
+        body.ids, _resolve_tenant(current_user, tenant_id), db
+    )
+    return {"deleted": deleted}
+
+
+@router.post("/bulk-hard-delete", response_model=BulkDeleteResponse)
+async def bulk_hard_delete_fiscal_entries(
+    body: BulkDeleteRequest,
+    tenant_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_office_user),
+):
+    deleted = await fiscal_entry_service.bulk_hard_delete_fiscal_entries(
+        body.ids, _resolve_tenant(current_user, tenant_id), db
+    )
+    return {"deleted": deleted}
+
+
+@router.post("/clear-trash", response_model=BulkDeleteResponse)
+async def clear_trash_fiscal_entries(
+    body: ClearTrashRequest,
+    tenant_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_office_user),
+):
+    deleted = await fiscal_entry_service.clear_trash_fiscal_entries(
+        body.company_id, _resolve_tenant(current_user, tenant_id), db
+    )
+    return {"deleted": deleted}
 
 
 @router.patch("/{entry_id}/delete", response_model=FiscalEntryResponse)
