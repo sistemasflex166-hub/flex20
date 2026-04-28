@@ -1,12 +1,11 @@
 from pydantic import BaseModel
-from src.models.fiscal_base import ProductUnit
 
 
 class ProductCreate(BaseModel):
     code: str
     name: str
     ncm: str | None = None
-    unit: ProductUnit = ProductUnit.UN
+    unit: str = "UN"
     price: float | None = None
 
 
@@ -14,7 +13,7 @@ class ProductUpdate(BaseModel):
     code: str | None = None
     name: str | None = None
     ncm: str | None = None
-    unit: ProductUnit | None = None
+    unit: str | None = None
     price: float | None = None
 
 
@@ -24,7 +23,7 @@ class ProductResponse(BaseModel):
     code: str
     name: str
     ncm: str | None
-    unit: ProductUnit
+    unit: str
     price: float | None
     is_active: bool
 
