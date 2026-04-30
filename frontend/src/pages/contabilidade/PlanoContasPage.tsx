@@ -21,12 +21,26 @@ const GRUPO_DRE_OPTIONS = [
   { value: 'outras_despesas', label: 'Outras Despesas' },
 ]
 
+function sortByClassificacao(a: PlanoContas, b: PlanoContas) {
+  const partsA = a.classificacao.split(/[.\-]/).map(Number)
+  const partsB = b.classificacao.split(/[.\-]/).map(Number)
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
 function buildTree(contas: PlanoContas[]) {
   const map = new Map<number | null, PlanoContas[]>()
   for (const c of contas) {
     const key = c.parent_id ?? null
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(c)
+  }
+  // garante ordem numérica correta em cada grupo de filhos
+  for (const [key, children] of map) {
+    map.set(key, children.sort(sortByClassificacao))
   }
   return map
 }
@@ -41,7 +55,7 @@ function TreeRow({
   onDeactivate: (id: number) => void
   onHardDelete: (id: number) => void
 }) {
-  const [open, setOpen] = useState(depth < 2)
+  const [open, setOpen] = useState(depth === 0)
   const children = tree.get(conta.id) ?? []
   const hasChildren = children.length > 0
   const isInativa = !conta.ativo
@@ -142,7 +156,7 @@ export function PlanoContasPage() {
       ])
       const map = new Map(ativas.map(c => [c.id, c]))
       inativas.forEach(c => { if (!map.has(c.id)) map.set(c.id, c) })
-      return Array.from(map.values()).sort((a, b) => a.classificacao.localeCompare(b.classificacao))
+      return Array.from(map.values()).sort(sortByClassificacao)
     },
     enabled: !!company,
   })

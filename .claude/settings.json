@@ -9,7 +9,9 @@
       "Bash(xargs ls *)",
       "Bash(docker restart *)",
       "Bash(curl -s -X POST http://localhost:8000/auth/token -d 'username=sistemasflex166@gmail.com&password=flex123' -H 'Content-Type: application/x-www-form-urlencoded')",
-      "Bash(curl -s -X POST \"http://localhost:8000/simples-nacional/preview?company_id=1\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer $\\(curl -s -X POST http://localhost:8000/auth/token -d 'username=sistemasflex166@gmail.com&password=flex123' -H 'Content-Type: application/x-www-form-urlencoded')"
+      "Bash(curl -s -X POST \"http://localhost:8000/simples-nacional/preview?company_id=1\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer $\\(curl -s -X POST http://localhost:8000/auth/token -d 'username=sistemasflex166@gmail.com&password=flex123' -H 'Content-Type: application/x-www-form-urlencoded')",
+      "PowerShell(docker restart flex20-backend-1 flex20-celery-1 2>&1)",
+      "PowerShell(docker exec flex20-backend-1 alembic current 2>&1)"
     ],
     "additionalDirectories": [
       "c:\\Flex 2.0\\backend\\src\\models"

@@ -146,12 +146,37 @@ async def gerar_balancete(
             natureza=conta.natureza,
         )
 
+    # mapa classificacao → id para inferir pai sem depender do parent_id do banco
+    classif_para_id = {c.classificacao: c.id for c in contas}
+
+    # detecta separador a partir das classificações existentes
+    separador = "."
+    for c in contas:
+        if "." in c.classificacao:
+            separador = "."
+            break
+        if "-" in c.classificacao:
+            separador = "-"
+            break
+
+    def _parent_classif(classif: str) -> str | None:
+        partes = classif.split(separador)
+        if len(partes) <= 1:
+            return None
+        return separador.join(partes[:-1])
+
     # propaga de filhos para pais percorrendo do nível mais profundo para o mais raso
     todas = {**linhas, **sinteticas}
-    contas_ord = sorted(contas, key=lambda c: c.classificacao, reverse=True)
+    contas_ord = sorted(contas, key=lambda c: c.nivel, reverse=True)
     for conta in contas_ord:
-        if conta.parent_id and conta.parent_id in todas and conta.id in todas:
-            pai = todas[conta.parent_id]
+        if conta.id not in todas:
+            continue
+        pai_classif = _parent_classif(conta.classificacao)
+        if not pai_classif:
+            continue
+        pai_id = classif_para_id.get(pai_classif)
+        if pai_id and pai_id in todas:
+            pai = todas[pai_id]
             filho = todas[conta.id]
             pai.saldo_anterior += filho.saldo_anterior
             pai.debitos += filho.debitos
@@ -163,8 +188,11 @@ async def gerar_balancete(
 
     todas = {**linhas, **sinteticas}
 
+    def _sort_key(l: LinhaBalancete):
+        return [int(p) for p in l.classificacao.replace("-", ".").split(".")]
+
     # 7. Filtrar e ordenar
-    resultado = sorted(todas.values(), key=lambda l: l.classificacao)
+    resultado = sorted(todas.values(), key=_sort_key)
 
     if nivel_maximo:
         resultado = [l for l in resultado if l.nivel <= nivel_maximo]
