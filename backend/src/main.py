@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.routes import auth, users, tenants, companies, partners, account_plans, fiscal_entries, fiscal_base, nfe_import, accountants, company_partners
 from src.routes.contabilidade import plano_contas as cont_plano_contas, lancamentos as cont_lancamentos, conta_bancaria as cont_conta_bancaria, saldo_inicial as cont_saldo_inicial, relatorios as cont_relatorios
 from src.routes.folha import cadastros as folha_cadastros
+from src.routes.folha import lancamentos as folha_lancamentos
 from src.routes.simples_nacional.router import router as simples_router
 from src.core.config import settings
 
@@ -39,6 +40,7 @@ app.include_router(cont_conta_bancaria.router, prefix="/api/contabilidade/contas
 app.include_router(cont_saldo_inicial.router, prefix="/api/contabilidade/saldos-iniciais", tags=["contabilidade-saldos-iniciais"])
 app.include_router(cont_relatorios.router, prefix="/api/contabilidade/relatorios", tags=["contabilidade-relatorios"])
 app.include_router(folha_cadastros.router, prefix="/api/folha", tags=["folha-cadastros"])
+app.include_router(folha_lancamentos.router, prefix="/api/folha", tags=["folha-lancamentos"])
 app.include_router(simples_router, prefix="/api/simples-nacional", tags=["simples-nacional"])
 
 

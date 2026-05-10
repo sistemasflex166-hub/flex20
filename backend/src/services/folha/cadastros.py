@@ -7,11 +7,16 @@ from src.models.folha.departamento import Departamento
 from src.models.folha.sindicato import Sindicato
 from src.models.folha.evento import Evento
 from src.models.folha.funcionario import Funcionario, DependenteFuncionario
+from src.models.folha.tabelas_tributarias import TabelaINSS, TabelaIRRF
 from src.schemas.folha.cargo import CargoCreate, CargoUpdate
 from src.schemas.folha.departamento import DepartamentoCreate, DepartamentoUpdate
 from src.schemas.folha.sindicato import SindicatoCreate, SindicatoUpdate
 from src.schemas.folha.evento import EventoCreate, EventoUpdate
 from src.schemas.folha.funcionario import FuncionarioCreate, FuncionarioUpdate
+from src.schemas.folha.tabelas_tributarias import (
+    TabelaINSSCreate, TabelaINSSUpdate,
+    TabelaIRRFCreate, TabelaIRRFUpdate,
+)
 
 
 async def _next_seq(model, company_id: int, db: AsyncSession) -> int:
@@ -254,3 +259,121 @@ async def inativar_funcionario(id: int, company_id: int, motivo: str | None, db:
     await db.commit()
     await db.refresh(obj)
     return obj
+
+
+# ── Tabela INSS ──────────────────────────────────────────────────────────────
+
+async def list_tabelas_inss(db: AsyncSession) -> list[TabelaINSS]:
+    result = await db.execute(
+        select(TabelaINSS).order_by(TabelaINSS.competencia_inicio.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def get_tabela_inss_vigente(competencia: "date", db: AsyncSession) -> TabelaINSS | None:
+    from datetime import date as date_type
+    result = await db.execute(
+        select(TabelaINSS)
+        .where(
+            TabelaINSS.competencia_inicio <= competencia,
+            (TabelaINSS.competencia_fim == None) | (TabelaINSS.competencia_fim >= competencia),
+        )
+        .order_by(TabelaINSS.competencia_inicio.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_tabela_inss(data: TabelaINSSCreate, db: AsyncSession) -> TabelaINSS:
+    obj = TabelaINSS(
+        competencia_inicio=data.competencia_inicio,
+        competencia_fim=data.competencia_fim,
+        faixas=data.faixas_as_json(),
+        teto_contribuicao=data.teto_contribuicao,
+    )
+    db.add(obj)
+    await db.commit()
+    await db.refresh(obj)
+    return obj
+
+
+async def update_tabela_inss(id: int, data: TabelaINSSUpdate, db: AsyncSession) -> TabelaINSS:
+    result = await db.execute(select(TabelaINSS).where(TabelaINSS.id == id))
+    obj = result.scalar_one()
+    if data.competencia_fim is not None:
+        obj.competencia_fim = data.competencia_fim
+    if data.teto_contribuicao is not None:
+        obj.teto_contribuicao = data.teto_contribuicao
+    faixas_json = data.faixas_as_json()
+    if faixas_json is not None:
+        obj.faixas = faixas_json
+    await db.commit()
+    await db.refresh(obj)
+    return obj
+
+
+async def delete_tabela_inss(id: int, db: AsyncSession) -> None:
+    result = await db.execute(select(TabelaINSS).where(TabelaINSS.id == id))
+    obj = result.scalar_one()
+    await db.delete(obj)
+    await db.commit()
+
+
+# ── Tabela IRRF ──────────────────────────────────────────────────────────────
+
+async def list_tabelas_irrf(db: AsyncSession) -> list[TabelaIRRF]:
+    result = await db.execute(
+        select(TabelaIRRF).order_by(TabelaIRRF.competencia_inicio.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def get_tabela_irrf_vigente(competencia: "date", db: AsyncSession) -> TabelaIRRF | None:
+    result = await db.execute(
+        select(TabelaIRRF)
+        .where(
+            TabelaIRRF.competencia_inicio <= competencia,
+            (TabelaIRRF.competencia_fim == None) | (TabelaIRRF.competencia_fim >= competencia),
+        )
+        .order_by(TabelaIRRF.competencia_inicio.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_tabela_irrf(data: TabelaIRRFCreate, db: AsyncSession) -> TabelaIRRF:
+    obj = TabelaIRRF(
+        competencia_inicio=data.competencia_inicio,
+        competencia_fim=data.competencia_fim,
+        faixas=data.faixas_as_json(),
+        valor_dependente=data.valor_dependente,
+        desconto_simplificado=data.desconto_simplificado,
+    )
+    db.add(obj)
+    await db.commit()
+    await db.refresh(obj)
+    return obj
+
+
+async def update_tabela_irrf(id: int, data: TabelaIRRFUpdate, db: AsyncSession) -> TabelaIRRF:
+    result = await db.execute(select(TabelaIRRF).where(TabelaIRRF.id == id))
+    obj = result.scalar_one()
+    if data.competencia_fim is not None:
+        obj.competencia_fim = data.competencia_fim
+    if data.valor_dependente is not None:
+        obj.valor_dependente = data.valor_dependente
+    if data.desconto_simplificado is not None:
+        obj.desconto_simplificado = data.desconto_simplificado
+    faixas_json = data.faixas_as_json()
+    if faixas_json is not None:
+        obj.faixas = faixas_json
+    await db.commit()
+    await db.refresh(obj)
+    return obj
+
+
+async def delete_tabela_irrf(id: int, db: AsyncSession) -> None:
+    result = await db.execute(select(TabelaIRRF).where(TabelaIRRF.id == id))
+    obj = result.scalar_one()
+    await db.delete(obj)
+    await db.commit()

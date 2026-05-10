@@ -42,7 +42,7 @@ class LancamentoVariavel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     company_id: Mapped[int] = mapped_column(Integer, nullable=False)
     codigo: Mapped[int] = mapped_column(Integer, nullable=False)
-    folha_id: Mapped[int] = mapped_column(ForeignKey("public.folha_pagamentos.id"), nullable=False)
+    folha_id: Mapped[int | None] = mapped_column(ForeignKey("public.folha_pagamentos.id"), nullable=True)
     funcionario_id: Mapped[int] = mapped_column(ForeignKey("public.folha_funcionarios.id"), nullable=False)
     evento_id: Mapped[int] = mapped_column(ForeignKey("public.folha_eventos.id"), nullable=False)
     competencia_mes: Mapped[int] = mapped_column(Integer, nullable=False)

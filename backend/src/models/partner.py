@@ -43,6 +43,9 @@ class Partner(Base):
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(254), nullable=True)
 
+    # CFOP padrão de entrada — prioridade sobre mapeamento global
+    cfop_entrada: Mapped[str | None] = mapped_column(String(5), nullable=True)
+
     # Integração contábil — modo conta_individual
     conta_contabil_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

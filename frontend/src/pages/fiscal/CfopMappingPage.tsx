@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, ArrowRight } from 'lucide-react'
+import { Plus, Trash2, ArrowRight, Pencil, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   listCfopMappings,
   createCfopMapping,
+  updateCfopMapping,
   deleteCfopMapping,
   type CfopMapping,
   type CfopMappingCreate,
@@ -22,6 +23,7 @@ export function CfopMappingPage() {
   const tenantId = user?.role === 'platform_admin' ? 1 : undefined
   const qc = useQueryClient()
   const [form, setForm] = useState<CfopMappingCreate>(EMPTY)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const { data: mappings = [], isLoading } = useQuery({
@@ -41,6 +43,31 @@ export function CfopMappingPage() {
     },
   })
 
+  const updateMutation = useMutation({
+    mutationFn: (body: CfopMappingCreate) => updateCfopMapping(editingId!, body, tenantId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cfop-mappings'] })
+      setForm(EMPTY)
+      setEditingId(null)
+      setFormError(null)
+    },
+    onError: (err: any) => {
+      setFormError(err?.response?.data?.detail ?? 'Erro ao salvar.')
+    },
+  })
+
+  const handleEdit = (m: CfopMapping) => {
+    setEditingId(m.id)
+    setForm({ cfop_origin: m.cfop_origin, cfop_destination: m.cfop_destination, description: m.description ?? '', company_id: m.company_id ?? null })
+    setFormError(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setForm(EMPTY)
+    setFormError(null)
+  }
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteCfopMapping(id, tenantId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cfop-mappings'] }),
@@ -52,11 +79,12 @@ export function CfopMappingPage() {
       setFormError('Preencha o CFOP de origem e o CFOP de destino.')
       return
     }
-    createMutation.mutate({
-      ...form,
-      company_id: form.company_id || null,
-      description: form.description || null,
-    })
+    const body = { ...form, company_id: form.company_id || null, description: form.description || null }
+    if (editingId) {
+      updateMutation.mutate(body)
+    } else {
+      createMutation.mutate(body)
+    }
   }
 
   return (
@@ -72,7 +100,16 @@ export function CfopMappingPage() {
         onSubmit={handleSubmit}
         className="mb-8 rounded-xl border border-gray-200 bg-white p-5"
       >
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">Novo mapeamento</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">
+            {editingId ? 'Editar mapeamento' : 'Novo mapeamento'}
+          </h2>
+          {editingId && (
+            <button onClick={handleCancelEdit} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
+              <X size={13} /> Cancelar edição
+            </button>
+          )}
+        </div>
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <label className="mb-1 block text-xs text-gray-500">CFOP de origem (fornecedor)</label>
@@ -113,11 +150,11 @@ export function CfopMappingPage() {
 
           <button
             type="submit"
-            disabled={createMutation.isPending}
+            disabled={createMutation.isPending || updateMutation.isPending}
             className="flex shrink-0 items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            <Plus size={15} />
-            Adicionar
+            {editingId ? <Pencil size={15} /> : <Plus size={15} />}
+            {editingId ? 'Salvar' : 'Adicionar'}
           </button>
         </div>
 
@@ -163,13 +200,22 @@ export function CfopMappingPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <button
-                      onClick={() => deleteMutation.mutate(m.id)}
-                      className="text-gray-400 hover:text-red-500"
-                      title="Remover"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => handleEdit(m)}
+                        className="text-gray-400 hover:text-brand-600"
+                        title="Editar"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => deleteMutation.mutate(m.id)}
+                        className="text-gray-400 hover:text-red-500"
+                        title="Remover"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

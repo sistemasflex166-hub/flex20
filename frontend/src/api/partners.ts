@@ -20,6 +20,7 @@ export interface Partner {
   phone: string | null
   email: string | null
   is_active: boolean
+  cfop_entrada: string | null
   conta_contabil_id: number | null
 }
 
@@ -40,6 +41,7 @@ export interface PartnerCreate {
   zip_code?: string
   phone?: string
   email?: string
+  cfop_entrada?: string | null
   conta_contabil_id?: number | null
 }
 

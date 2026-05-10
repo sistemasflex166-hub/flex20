@@ -449,12 +449,32 @@ async def import_nfe_xml(
         partner_cnpj = dest_cnpj or _clean_doc(nfe.dest.cpf)
 
     # Mapeamento CFOP para entrada
+    # Prioridade: CFOP do cadastro do fornecedor > Mapeamento de CFOP > sem mapeamento
     cfop_map: dict[str, str] = {}
+    cfop_sem_vinculacao: list[str] = []
     if is_purchase:
         for cfop in {item.cfop for item in nfe.itens}:
-            mapped = await _find_cfop_mapping(cfop, tenant_id, company.id, db)
-            if mapped:
-                cfop_map[cfop] = mapped
+            # 1º: CFOP informado diretamente no cadastro do fornecedor
+            if partner and getattr(partner, "cfop_entrada", None):
+                cfop_map[cfop] = partner.cfop_entrada
+            else:
+                # 2º: tabela de mapeamento de CFOP
+                mapped = await _find_cfop_mapping(cfop, tenant_id, company.id, db)
+                if mapped:
+                    cfop_map[cfop] = mapped
+                else:
+                    cfop_sem_vinculacao.append(cfop)
+
+        if cfop_sem_vinculacao:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Os seguintes CFOPs de entrada não possuem vinculação: "
+                    f"{', '.join(sorted(set(cfop_sem_vinculacao)))}. "
+                    f"Configure o CFOP de Entrada no cadastro do fornecedor "
+                    f"ou adicione o mapeamento em Mapeamento de CFOP."
+                ),
+            )
 
     entry_type = "purchase" if is_purchase else "sale"
     entry_date = _parse_date(nfe.dh_emi)

@@ -61,6 +61,8 @@ const menuItems: MenuItem[] = [
       { label: 'Departamentos', path: '/folha/departamentos' },
       { label: 'Sindicatos', path: '/folha/sindicatos' },
       { label: 'Eventos da Folha', path: '/folha/eventos' },
+      { label: 'Tabelas Tributárias', path: '/folha/tabelas-tributarias' },
+      { label: 'Variáveis da Folha', path: '/folha/lancamentos-variaveis' },
     ],
   },
   {

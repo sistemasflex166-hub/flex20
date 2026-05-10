@@ -140,9 +140,10 @@ interface Filters {
   dateTo: string
   cfop: string
   partner: string
+  nfNumber: string
 }
 
-const EMPTY_FILTERS: Filters = { entryType: '', dateFrom: '', dateTo: '', cfop: '', partner: '' }
+const EMPTY_FILTERS: Filters = { entryType: '', dateFrom: '', dateTo: '', cfop: '', partner: '', nfNumber: '' }
 
 function FiltersBar({
   filters, onChange, total, filtered,
@@ -202,6 +203,18 @@ function FiltersBar({
             placeholder="ex: 6102"
             value={filters.cfop}
             onChange={(e) => set('cfop', e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Nº da nota */}
+        <div className="min-w-[110px] flex-1">
+          <label className="mb-1 block text-xs text-gray-500">Nº da nota</label>
+          <input
+            type="text"
+            placeholder="ex: 308"
+            value={filters.nfNumber}
+            onChange={(e) => set('nfNumber', e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
           />
         </div>
@@ -409,6 +422,11 @@ export function FiscalEntriesPage() {
       )
     }
 
+    if (filters.nfNumber) {
+      const term = filters.nfNumber.trim()
+      result = result.filter((e) => String(e.document_number ?? '').includes(term))
+    }
+
     return result
   }, [entries, filters])
 
@@ -564,7 +582,7 @@ export function FiscalEntriesPage() {
             <div className="mb-3 flex flex-wrap items-center gap-3">
               <div className="flex flex-1 flex-wrap gap-3">
                 <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
-                  <span className="text-xs text-gray-400">Total ({filtered.length} lanç.)</span>
+                  <span className="text-xs text-gray-400">Total lançamentos pesquisados: {filtered.length}</span>
                   <p className="font-semibold text-gray-900">{fmtBRL(totals.gross)}</p>
                 </div>
                 {visibleCols.icms && (

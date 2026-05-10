@@ -9,6 +9,10 @@ from src.schemas.folha.departamento import DepartamentoCreate, DepartamentoUpdat
 from src.schemas.folha.sindicato import SindicatoCreate, SindicatoUpdate, SindicatoResponse
 from src.schemas.folha.evento import EventoCreate, EventoUpdate, EventoResponse
 from src.schemas.folha.funcionario import FuncionarioCreate, FuncionarioUpdate, FuncionarioResponse
+from src.schemas.folha.tabelas_tributarias import (
+    TabelaINSSCreate, TabelaINSSUpdate, TabelaINSSResponse,
+    TabelaIRRFCreate, TabelaIRRFUpdate, TabelaIRRFResponse,
+)
 from src.services.folha import cadastros as svc
 
 router = APIRouter()
@@ -242,3 +246,79 @@ async def inativar_funcionario(
     _: User = Depends(get_current_user),
 ):
     return await svc.inativar_funcionario(id, company_id, motivo, db)
+
+
+# ── Tabela INSS ──────────────────────────────────────────────────────────────
+
+@router.get("/tabelas/inss", response_model=list[TabelaINSSResponse])
+async def list_tabelas_inss(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await svc.list_tabelas_inss(db)
+
+
+@router.post("/tabelas/inss", response_model=TabelaINSSResponse, status_code=201)
+async def create_tabela_inss(
+    data: TabelaINSSCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await svc.create_tabela_inss(data, db)
+
+
+@router.patch("/tabelas/inss/{id}", response_model=TabelaINSSResponse)
+async def update_tabela_inss(
+    id: int,
+    data: TabelaINSSUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await svc.update_tabela_inss(id, data, db)
+
+
+@router.delete("/tabelas/inss/{id}", status_code=204)
+async def delete_tabela_inss(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    await svc.delete_tabela_inss(id, db)
+
+
+# ── Tabela IRRF ──────────────────────────────────────────────────────────────
+
+@router.get("/tabelas/irrf", response_model=list[TabelaIRRFResponse])
+async def list_tabelas_irrf(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await svc.list_tabelas_irrf(db)
+
+
+@router.post("/tabelas/irrf", response_model=TabelaIRRFResponse, status_code=201)
+async def create_tabela_irrf(
+    data: TabelaIRRFCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await svc.create_tabela_irrf(data, db)
+
+
+@router.patch("/tabelas/irrf/{id}", response_model=TabelaIRRFResponse)
+async def update_tabela_irrf(
+    id: int,
+    data: TabelaIRRFUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await svc.update_tabela_irrf(id, data, db)
+
+
+@router.delete("/tabelas/irrf/{id}", status_code=204)
+async def delete_tabela_irrf(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    await svc.delete_tabela_irrf(id, db)

@@ -19,6 +19,7 @@ class PartnerCreate(BaseModel):
     zip_code: str | None = None
     phone: str | None = None
     email: str | None = None
+    cfop_entrada: str | None = None
     conta_contabil_id: int | None = None
 
 
@@ -39,6 +40,7 @@ class PartnerUpdate(BaseModel):
     zip_code: str | None = None
     phone: str | None = None
     email: str | None = None
+    cfop_entrada: str | None = None
     conta_contabil_id: int | None = None
 
 
@@ -58,6 +60,7 @@ class PartnerResponse(BaseModel):
     state: str | None
     phone: str | None
     email: str | None
+    cfop_entrada: str | None
     is_active: bool
     conta_contabil_id: int | None
 

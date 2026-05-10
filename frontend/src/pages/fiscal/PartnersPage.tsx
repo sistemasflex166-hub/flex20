@@ -23,6 +23,7 @@ const schema = z.object({
   state: z.string().max(2).optional(),
   phone: z.string().optional(),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  cfop_entrada: z.string().max(5).optional().nullable(),
   conta_contabil_id: z.coerce.number().optional().nullable(),
 })
 
@@ -114,6 +115,7 @@ export function PartnersPage() {
       state: p.state ?? '',
       phone: p.phone ?? '',
       email: p.email ?? '',
+      cfop_entrada: p.cfop_entrada ?? '',
       conta_contabil_id: p.conta_contabil_id ?? null,
     })
     setShowForm(true)
@@ -322,6 +324,11 @@ export function PartnersPage() {
                   <label className="mb-1 block text-xs font-medium text-gray-700">E-mail</label>
                   <input {...register('email')} className="input" type="email" />
                   {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">CFOP Entrada</label>
+                  <input {...register('cfop_entrada')} className="input" maxLength={5} placeholder="ex: 2102" />
+                  <p className="mt-0.5 text-xs text-gray-400">CFOP usado na importação de NF-e de entrada deste fornecedor. Tem prioridade sobre o Mapeamento de CFOP.</p>
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1 block text-xs font-medium text-gray-700">Conta Contábil (ID)</label>
