@@ -33,6 +33,32 @@ class FolhaPagamento(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
     lancamentos: Mapped[list["LancamentoVariavel"]] = relationship("LancamentoVariavel", back_populates="folha")
+    itens: Mapped[list["ItemFolha"]] = relationship("ItemFolha", back_populates="folha", cascade="all, delete-orphan")
+
+
+class ItemFolha(Base):
+    """Resultado do cálculo por funcionário — uma linha por evento (salário, INSS, IRRF, FGTS, variáveis)."""
+    __tablename__ = "folha_itens"
+    __table_args__ = {"schema": "public"}
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    folha_id: Mapped[int] = mapped_column(ForeignKey("public.folha_pagamentos.id"), nullable=False)
+    funcionario_id: Mapped[int] = mapped_column(ForeignKey("public.folha_funcionarios.id"), nullable=False)
+    evento_id: Mapped[int | None] = mapped_column(ForeignKey("public.folha_eventos.id"), nullable=True)
+    # Nulo para linhas automáticas: INSS, IRRF, FGTS
+
+    tipo_linha: Mapped[str] = mapped_column(String(20), nullable=False)
+    # salario_base / variavel / inss / irrf / fgts / liquido
+
+    descricao: Mapped[str] = mapped_column(String(150), nullable=False)
+    tipo: Mapped[str] = mapped_column(String(15), nullable=False)   # provento / desconto / informativo
+    referencia: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    valor: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    ordem: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    folha: Mapped["FolhaPagamento"] = relationship("FolhaPagamento", back_populates="itens")
+    funcionario: Mapped["Funcionario"] = relationship("Funcionario")
+    evento: Mapped["Evento | None"] = relationship("Evento")
 
 
 class LancamentoVariavel(Base):

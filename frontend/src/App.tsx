@@ -33,6 +33,7 @@ import { SindicatosPage } from '@/pages/folha/SindicatosPage'
 import { EventosPage } from '@/pages/folha/EventosPage'
 import TabelasTributariasPage from '@/pages/folha/TabelasTributariasPage'
 import LancamentosVariaveisPage from '@/pages/folha/LancamentosVariaveisPage'
+import FolhaPagamentoPage from '@/pages/folha/FolhaPagamentoPage'
 
 const queryClient = new QueryClient()
 
@@ -74,6 +75,7 @@ export default function App() {
                 <Route path="/folha/eventos" element={<EventosPage />} />
                 <Route path="/folha/tabelas-tributarias" element={<TabelasTributariasPage />} />
                 <Route path="/folha/lancamentos-variaveis" element={<LancamentosVariaveisPage />} />
+                <Route path="/folha/folha-pagamento" element={<FolhaPagamentoPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

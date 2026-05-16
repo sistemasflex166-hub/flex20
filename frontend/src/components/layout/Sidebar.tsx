@@ -63,6 +63,7 @@ const menuItems: MenuItem[] = [
       { label: 'Eventos da Folha', path: '/folha/eventos' },
       { label: 'Tabelas Tributárias', path: '/folha/tabelas-tributarias' },
       { label: 'Variáveis da Folha', path: '/folha/lancamentos-variaveis' },
+      { label: 'Folha de Pagamento', path: '/folha/folha-pagamento' },
     ],
   },
   {
@@ -89,8 +90,8 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-gray-200 bg-white">
-      <div className="border-b border-gray-200 px-5 py-4">
-        <span className="text-lg font-semibold text-brand-700">Flex 2.0</span>
+      <div className="border-b border-gray-200 px-5 py-4 flex items-center justify-center">
+        <img src="/logo.svg" alt="Flex 2.0" className="h-14 w-auto" />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-3">

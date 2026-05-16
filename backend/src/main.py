@@ -5,6 +5,7 @@ from src.routes import auth, users, tenants, companies, partners, account_plans,
 from src.routes.contabilidade import plano_contas as cont_plano_contas, lancamentos as cont_lancamentos, conta_bancaria as cont_conta_bancaria, saldo_inicial as cont_saldo_inicial, relatorios as cont_relatorios
 from src.routes.folha import cadastros as folha_cadastros
 from src.routes.folha import lancamentos as folha_lancamentos
+from src.routes.folha import folha_pagamento as folha_calculo
 from src.routes.simples_nacional.router import router as simples_router
 from src.core.config import settings
 
@@ -41,6 +42,7 @@ app.include_router(cont_saldo_inicial.router, prefix="/api/contabilidade/saldos-
 app.include_router(cont_relatorios.router, prefix="/api/contabilidade/relatorios", tags=["contabilidade-relatorios"])
 app.include_router(folha_cadastros.router, prefix="/api/folha", tags=["folha-cadastros"])
 app.include_router(folha_lancamentos.router, prefix="/api/folha", tags=["folha-lancamentos"])
+app.include_router(folha_calculo.router, prefix="/api/folha", tags=["folha-calculo"])
 app.include_router(simples_router, prefix="/api/simples-nacional", tags=["simples-nacional"])
 
 

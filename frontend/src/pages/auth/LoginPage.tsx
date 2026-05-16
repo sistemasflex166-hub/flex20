@@ -30,7 +30,9 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-2xl font-semibold text-gray-900">Flex 2.0</h1>
+        <div className="mb-6 flex justify-center">
+          <img src="/logo.svg" alt="Flex 2.0" className="h-28 w-auto" />
+        </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">E-mail</label>

@@ -171,11 +171,11 @@ export default function LancamentosVariaveisPage() {
 
   const totalProventos = lancamentos
     .filter(l => l.evento.tipo === 'provento' && l.valor != null)
-    .reduce((s, l) => s + (l.valor ?? 0), 0)
+    .reduce((s, l) => s + Number(l.valor ?? 0), 0)
 
   const totalDescontos = lancamentos
     .filter(l => l.evento.tipo === 'desconto' && l.valor != null)
-    .reduce((s, l) => s + (l.valor ?? 0), 0)
+    .reduce((s, l) => s + Number(l.valor ?? 0), 0)
 
   return (
     <div className="p-6 space-y-4">

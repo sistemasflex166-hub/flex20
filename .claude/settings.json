@@ -13,7 +13,11 @@
       "PowerShell(docker restart flex20-backend-1 flex20-celery-1 2>&1)",
       "PowerShell(docker exec flex20-backend-1 alembic current 2>&1)",
       "Bash(npx tsc *)",
-      "Bash(node_modules/.bin/tsc --noEmit --skipLibCheck)"
+      "Bash(node_modules/.bin/tsc --noEmit --skipLibCheck)",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/folha/folhas/1/calcular?company_id=4\")",
+      "Bash(curl -v -X POST \"http://localhost:8000/api/folha/folhas/1/calcular?company_id=4\")",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/folha/folhas/1/calcular?company_id=4\" -H \"Content-Type: application/json\")",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "c:\\Flex 2.0\\backend\\src\\models"

@@ -430,6 +430,74 @@ export const tabelasIRRFApi = {
   delete: (id: number) => api.delete(`/folha/tabelas/irrf/${id}`),
 }
 
+export interface FolhaPagamento {
+  id: number
+  company_id: number
+  codigo: number
+  competencia_mes: number
+  competencia_ano: number
+  status: string   // aberta / calculada / fechada
+  total_proventos: number
+  total_descontos: number
+  total_liquido: number
+  total_inss_empregado: number
+  total_irrf: number
+  total_fgts: number
+  total_inss_patronal: number
+  data_calculo: string | null
+  data_fechamento: string | null
+  created_at: string
+}
+
+export interface FolhaPagamentoCreate {
+  competencia_mes: number
+  competencia_ano: number
+}
+
+export interface ItemFolha {
+  id: number
+  folha_id: number
+  funcionario_id: number
+  evento_id: number | null
+  tipo_linha: string   // salario_base / variavel / inss / irrf / fgts / liquido
+  descricao: string
+  tipo: string         // provento / desconto / informativo
+  referencia: number | null
+  valor: number
+  ordem: number
+  funcionario: FuncionarioResumo
+}
+
+export interface ResumoFuncionarioFolha {
+  funcionario_id: number
+  funcionario_codigo: number
+  funcionario_nome: string
+  total_proventos: number
+  total_descontos: number
+  liquido: number
+  inss: number
+  irrf: number
+  fgts: number
+  itens: ItemFolha[]
+}
+
+export const folhasApi = {
+  list: (companyId: number) =>
+    api.get<FolhaPagamento[]>('/folha/folhas', { params: { company_id: companyId } }),
+  create: (companyId: number, data: FolhaPagamentoCreate) =>
+    api.post<FolhaPagamento>(`/folha/folhas?company_id=${companyId}`, data),
+  calcular: (companyId: number, folhaId: number) =>
+    api.post<FolhaPagamento>(`/folha/folhas/${folhaId}/calcular?company_id=${companyId}`),
+  fechar: (companyId: number, folhaId: number) =>
+    api.post<FolhaPagamento>(`/folha/folhas/${folhaId}/fechar?company_id=${companyId}`),
+  reabrir: (companyId: number, folhaId: number) =>
+    api.post<FolhaPagamento>(`/folha/folhas/${folhaId}/reabrir?company_id=${companyId}`),
+  itens: (companyId: number, folhaId: number) =>
+    api.get<ItemFolha[]>(`/folha/folhas/${folhaId}/itens`, { params: { company_id: companyId } }),
+  resumo: (companyId: number, folhaId: number) =>
+    api.get<ResumoFuncionarioFolha[]>(`/folha/folhas/${folhaId}/resumo`, { params: { company_id: companyId } }),
+}
+
 export const funcionariosApi = {
   list: (companyId: number, apenasAtivos = true) =>
     api.get<Funcionario[]>('/folha/funcionarios', { params: { company_id: companyId, apenas_ativos: apenasAtivos } }),
